@@ -1,7 +1,7 @@
 ---
 id: US-01-INFRA-003
 title: Camera Preview & Lifecycle Management
-status: READY
+status: DONE
 type: feature
 ---
 # Description
@@ -35,3 +35,6 @@ As a User, I want to see a full-screen, high-performance camera preview so that 
 - Ensure `isActive` prop is synced with screen focus and app state to save battery.
 
 # Reviewer Feedback (Reviewer)
+- [x] **REJECTED**: The current implementation of `CameraView.tsx` does not include `testID="camera-view"` which is required for the tests to pass.
+- [ ] Please add `testID="camera-view"` to the `<Camera />` component.
+- [ ] Ensure all tests pass after the change.

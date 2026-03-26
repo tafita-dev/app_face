@@ -6,7 +6,9 @@
 | Feature / Module | Key Files / Directories | Entry Point |
 | :--- | :--- | :--- |
 | **Auth / Enrollment** | `src/features/auth/` | `src/features/auth/index.ts` |
-| **Camera & Vision** | `src/features/camera/`, `android/app/src/main/java/.../vision/` | `src/features/camera/CameraView.tsx` |
+| **Camera UI** | `src/features/camera/components/` | `src/features/camera/ScanScreen.tsx` |
+| **Vision Camera Core**| `src/features/camera/CameraView.tsx` | `src/features/camera/index.ts` |
+| **Frame Processing** | `src/features/camera/frame-processors/face-processor.ts` | `src/features/camera/frame-processors/index.ts` |
 | **Verification Logic** | `src/features/verification/` | `src/features/verification/verification-service.ts` |
 | **ML Models & Assets** | `src/assets/models/` | `src/assets/index.ts` |
 | **State Management** | `src/store/` | `src/store/index.ts` |

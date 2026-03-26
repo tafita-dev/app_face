@@ -1,7 +1,7 @@
 ---
 id: US-01-INFRA-002
 title: Camera Permission Handling & Authorization Flow
-status: IN_PROGRESS
+status: DONE
 type: feature
 ---
 # Description

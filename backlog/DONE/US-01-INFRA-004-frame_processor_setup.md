@@ -1,7 +1,7 @@
 ---
 id: US-01-INFRA-004
 title: Frame Processor & JSI Infrastructure
-status: READY
+status: DONE
 type: feature
 ---
 # Description
@@ -31,8 +31,21 @@ As a Developer, I want a high-performance Frame Processor setup using JSI so tha
 - None (Performance/Infrastructure focused).
 
 # Technical Notes (Architect)
-- Must install `react-native-worklets-core`.
-- Configure `babel.config.js` with `'react-native-vision-camera/babel-plugin'`.
-- This is the foundation for all subsequent ML detection (MLKit/TFLite).
+- Must install `react-native-worklets-core` and configure `react-native-vision-camera` (v4+).
+- Babel Configuration:
+  - Add `react-native-worklets-core/plugin` to `babel.config.js`.
+  - Add `react-native-vision-camera/babel-plugin` to `babel.config.js`.
+- Implementation:
+  - Create directory `src/features/camera/frame-processors/`.
+  - Implement a base hook `useFrameProcessor` (or equivalent wrapper) that exposes the frame analysis lifecycle.
+  - Implement a test worklet to verify communication between Native and JS threads (simple frame count).
+- Performance: Ensure that all Frame Processors are declared as `@worklet` functions to stay off the JS thread.
+
+# Context Map
+> Reference @specs/context-map.md
+> Specific files for this story:
+> * `src/features/camera/frame-processors/`
+> * `babel.config.js`
+> * `src/features/camera/hooks/useFrameProcessor.ts`
 
 # Reviewer Feedback (Reviewer)

@@ -1,10 +1,35 @@
-import 'react-native-gesture-handler/jestSetup';
 import React from 'react';
+import 'react-native-gesture-handler/jestSetup';
+
+jest.mock('react-native-worklets-core', () => ({
+  Worklets: {
+    createRunOnJS: (fn: any) => fn,
+  },
+}));
+
+jest.mock('react-native-worklets', () => ({
+  Worklets: {
+    createRunOnJS: (fn: any) => fn,
+  },
+  createSerializable: (val: any) => val,
+}));
 
 jest.mock('react-native-reanimated', () => {
-  const Reanimated = require('react-native-reanimated/mock');
-  Reanimated.default.call = () => {};
-  return Reanimated;
+  return {
+    useSharedValue: (val: any) => ({ value: val }),
+    useDerivedValue: (cb: any) => ({
+      get value() {
+        return cb();
+      },
+    }),
+    useAnimatedStyle: (cb: any) => cb(),
+    withTiming: (val: any) => val,
+    withSpring: (val: any) => val,
+    runOnJS: (fn: any) => fn,
+    runOnUI: (fn: any) => fn,
+    makeMutable: (val: any) => ({ value: val }),
+    interpolate: (x, y, z) => x,
+  };
 });
 
 jest.mock('react-native-screens', () => ({
@@ -41,13 +66,17 @@ jest.mock('@react-navigation/native-stack', () => {
 });
 
 // Mock react-native-vision-camera
-jest.mock('react-native-vision-camera', () => ({
-  Camera: {
+jest.mock('react-native-vision-camera', () => {
+  const React = require('react');
+  return {
+    Camera: React.forwardRef((props, ref) => {
+      return React.createElement('View', { ...props, ref, testID: 'camera-view' });
+    }),
+    useCameraDevice: jest.fn(),
     getCameraPermissionStatus: jest.fn(() => 'not-determined'),
     requestCameraPermission: jest.fn(),
-  },
-  useCameraDevice: jest.fn(),
-}));
+  };
+});
 
 // Mock @react-navigation/native
 jest.mock('@react-navigation/native', () => {

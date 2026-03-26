@@ -1,7 +1,7 @@
 ---
 id: US-01-INFRA-005
 title: Skia UI Overlay Integration
-status: READY
+status: DONE
 type: feature
 ---
 # Description
@@ -31,8 +31,23 @@ As a User, I want to see a smooth, high-performance UI overlay on top of the cam
 - Skia Canvas with an `<Oval />` (Face Guide) as described in `specs/02-UX-DESIGN.md`.
 
 # Technical Notes (Architect)
-- Use `react-native-skia`.
-- Ensure the Skia Canvas is positioned absolutely over the Vision Camera component.
-- Use Reanimated Shared Values to eventually drive the Guide's color and scale based on detector results.
+- Must install `react-native-skia` and `react-native-reanimated`.
+- Implementation:
+  - Create `src/components/camera/FaceGuide.tsx` (using Skia `<Canvas>` and `<Path>` or `<Oval>`).
+  - Overlay: Ensure the canvas is absolutely positioned to `StyleSheet.absoluteFill` to match the Camera view.
+  - Integration: Use Reanimated `useSharedValue` to track the state of the face guide (e.g., color `Blue` -> `Green` based on verification state).
+- Performance:
+  - Keep Skia render logic simple to maintain 60 FPS.
+  - Memoize Skia components where necessary.
+- UI Consistency:
+  - Follow `specs/02-UX-DESIGN.md` regarding the dynamic face guide dimensions and color changes (Blue: Idle, Green: Valid position).
+
+# Context Map
+> Reference @specs/context-map.md
+> Specific files for this story:
+> * `src/components/camera/FaceGuide.tsx`
+> * `src/features/camera/CameraView.tsx`
+> * `src/features/camera/ScanScreen.tsx`
+> * `specs/02-UX-DESIGN.md`
 
 # Reviewer Feedback (Reviewer)
