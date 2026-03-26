@@ -1,18 +1,14 @@
-import { VisionCameraProxy, Frame } from 'react-native-vision-camera';
-import { IFaceDetection } from './types';
+import { Frame, VisionCameraProxy } from 'react-native-vision-camera';
 
-const plugin = VisionCameraProxy.getFrameProcessorPlugin('scanFaces');
+const plugin = VisionCameraProxy.initFrameProcessorPlugin(
+  'FaceDetectorPlugin',
+  {},
+);
 
-/**
- * Unified face processor worklet.
- * It calls the native JSI plugin 'scanFaces' which uses MLKit.
- */
-export const scanFaces = (frame: Frame): IFaceDetection[] => {
+export function scanFaces(frame: Frame) {
   'worklet';
   if (plugin == null) {
-    // In some environments (like some emulators or if not correctly registered)
-    // the plugin might be null.
     return [];
   }
-  return plugin.call(frame) as unknown as IFaceDetection[];
-};
+  return plugin.call(frame);
+}
