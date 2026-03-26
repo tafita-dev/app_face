@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react-native';
 import { useFaceDetection } from './useFaceDetection';
 import { useFrameProcessor } from 'react-native-vision-camera';
-import { scanFaces } from '../frame-processors/face-processor';
+import { trackFacialLandmarks } from '../frame-processors/face-processor';
 
 jest.mock('react-native-vision-camera', () => {
   const React = require('react');
@@ -17,7 +17,7 @@ jest.mock('react-native-vision-camera', () => {
 });
 
 jest.mock('../frame-processors/face-processor', () => ({
-  scanFaces: jest.fn(),
+  trackFacialLandmarks: jest.fn(),
 }));
 
 describe('useFaceDetection', () => {
@@ -34,12 +34,12 @@ describe('useFaceDetection', () => {
   });
 
   it('should update face with the largest detected face', () => {
-    const mockScanFaces = scanFaces as jest.Mock;
+    const mockTrackFacialLandmarks = trackFacialLandmarks as jest.Mock;
     const { result } = renderHook(() => useFaceDetection());
     const frameProcessorCallback = (useFrameProcessor as jest.Mock).mock.calls[0][0];
 
     const mockFrame = { width: 100, height: 100 } as any;
-    mockScanFaces.mockReturnValue([
+    mockTrackFacialLandmarks.mockReturnValue([
       { bounds: { top: 0, left: 0, width: 10, height: 10 } },
       { bounds: { top: 0, left: 0, width: 20, height: 20 } },
     ]);
@@ -52,12 +52,12 @@ describe('useFaceDetection', () => {
   });
 
   it('should calculate validPosition correctly when face is centered', () => {
-    const mockScanFaces = scanFaces as jest.Mock;
+    const mockTrackFacialLandmarks = trackFacialLandmarks as jest.Mock;
     const { result } = renderHook(() => useFaceDetection());
     const frameProcessorCallback = (useFrameProcessor as jest.Mock).mock.calls[0][0];
 
     const mockFrame = { width: 100, height: 100 } as any;
-    mockScanFaces.mockReturnValue([
+    mockTrackFacialLandmarks.mockReturnValue([
       { bounds: { top: 40, left: 40, width: 20, height: 20 } }, // center is (50, 50)
     ]);
 
@@ -67,17 +67,30 @@ describe('useFaceDetection', () => {
   });
 
   it('should calculate validPosition correctly when face is off center', () => {
-    const mockScanFaces = scanFaces as jest.Mock;
+    const mockTrackFacialLandmarks = trackFacialLandmarks as jest.Mock;
     const { result } = renderHook(() => useFaceDetection());
     const frameProcessorCallback = (useFrameProcessor as jest.Mock).mock.calls[0][0];
 
     const mockFrame = { width: 100, height: 100 } as any;
-    mockScanFaces.mockReturnValue([
+    mockTrackFacialLandmarks.mockReturnValue([
       { bounds: { top: 0, left: 0, width: 20, height: 20 } }, // center is (10, 10)
     ]);
 
     frameProcessorCallback(mockFrame);
 
     expect(result.current.validPosition.value).toBe(false);
+  });
+
+  it('should set face to null when no faces are detected', () => {
+    const mockTrackFacialLandmarks = trackFacialLandmarks as jest.Mock;
+    const { result } = renderHook(() => useFaceDetection());
+    const frameProcessorCallback = (useFrameProcessor as jest.Mock).mock.calls[0][0];
+
+    const mockFrame = { width: 100, height: 100 } as any;
+    mockTrackFacialLandmarks.mockReturnValue(null);
+
+    frameProcessorCallback(mockFrame);
+
+    expect(result.current.face.value).toBeNull();
   });
 });

@@ -5,6 +5,7 @@ import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
+import com.google.mlkit.vision.face.FaceLandmark
 import com.mrousavy.camera.frameprocessors.Frame
 import com.mrousavy.camera.frameprocessors.FrameProcessorPlugin
 import com.mrousavy.camera.frameprocessors.VisionCameraProxy
@@ -17,7 +18,7 @@ class FaceDetectorPlugin(
 
     private val detectorOptions = FaceDetectorOptions.Builder()
         .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
-        .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_NONE)
+        .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
         .setContourMode(FaceDetectorOptions.CONTOUR_MODE_NONE)
         .build()
 
@@ -57,8 +58,29 @@ class FaceDetectorPlugin(
             map["pitchAngle"] = face.headEulerAngleX.toDouble()
             map["yawAngle"] = face.headEulerAngleY.toDouble()
 
-            // Landmarks (vide pour l'instant)
-            map["landmarks"] = emptyMap<String, Any>()
+            // Landmarks
+            val landmarks = mutableMapOf<String, Map<String, Double>>()
+            
+            face.getLandmark(FaceLandmark.LEFT_EYE)?.let {
+                landmarks["leftEye"] = mapOf("x" to it.position.x.toDouble(), "y" to it.position.y.toDouble())
+            }
+            face.getLandmark(FaceLandmark.RIGHT_EYE)?.let {
+                landmarks["rightEye"] = mapOf("x" to it.position.x.toDouble(), "y" to it.position.y.toDouble())
+            }
+            face.getLandmark(FaceLandmark.NOSE_BASE)?.let {
+                landmarks["noseBase"] = mapOf("x" to it.position.x.toDouble(), "y" to it.position.y.toDouble())
+            }
+            face.getLandmark(FaceLandmark.MOUTH_LEFT)?.let {
+                landmarks["mouthLeft"] = mapOf("x" to it.position.x.toDouble(), "y" to it.position.y.toDouble())
+            }
+            face.getLandmark(FaceLandmark.MOUTH_RIGHT)?.let {
+                landmarks["mouthRight"] = mapOf("x" to it.position.x.toDouble(), "y" to it.position.y.toDouble())
+            }
+            face.getLandmark(FaceLandmark.MOUTH_BOTTOM)?.let {
+                landmarks["mouthBottom"] = mapOf("x" to it.position.x.toDouble(), "y" to it.position.y.toDouble())
+            }
+
+            map["landmarks"] = landmarks
 
             result.add(map)
         }
