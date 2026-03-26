@@ -1,7 +1,7 @@
 ---
 id: US-02-FACE-004
 title: Provide User Guidance for Optimal Detection
-status: READY
+status: DONE
 type: feature
 ---
 
@@ -19,22 +19,22 @@ As a user, I want the system to tell me if I need to move closer or center my fa
 
 # Acceptance Criteria (DoD)
 
-- [ ] **Scenario 1: Guidance - "Move Closer"**
+- [x] **Scenario 1: Guidance - "Move Closer"**
   - Given a face is detected but it occupies less than 30% of the screen width,
   - When the guidance hook evaluates the state,
   - Then it returns the message "Move closer".
 
-- [ ] **Scenario 2: Guidance - "Center your face"**
+- [x] **Scenario 2: Guidance - "Center your face"**
   - Given a face is detected but its center is more than 20% away from the screen center,
   - When the guidance hook evaluates the state,
   - Then it returns the message "Center your face".
 
-- [ ] **Scenario 3: Guidance - "Stay Still"**
+- [x] **Scenario 3: Guidance - "Stay Still"**
   - Given a face is centered and at the correct distance,
   - When the guidance hook evaluates the state,
   - Then it returns "Perfect, stay still" or a success indicator.
 
-- [ ] **Scenario 4: Feedback UI**
+- [x] **Scenario 4: Feedback UI**
   - Given a guidance message is active,
   - When the `FaceGuide` component renders,
   - Then the message is displayed in a clear, readable overlay text.

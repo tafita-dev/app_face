@@ -15,6 +15,7 @@ jest.mock('react-native-worklets', () => ({
 }));
 
 jest.mock('react-native-reanimated', () => {
+  const React = require('react');
   return {
     useSharedValue: (val: any) => ({ value: val }),
     useDerivedValue: (cb: any) => ({
@@ -23,12 +24,14 @@ jest.mock('react-native-reanimated', () => {
       },
     }),
     useAnimatedStyle: (cb: any) => cb(),
+    useAnimatedProps: (cb: any) => cb(),
     withTiming: (val: any) => val,
     withSpring: (val: any) => val,
     runOnJS: (fn: any) => fn,
     runOnUI: (fn: any) => fn,
     makeMutable: (val: any) => ({ value: val }),
     interpolate: (x, y, z) => x,
+    createAnimatedComponent: (Component: any) => Component,
   };
 });
 

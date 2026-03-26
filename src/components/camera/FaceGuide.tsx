@@ -1,9 +1,10 @@
 import React from 'react';
 import { Canvas, Rect, Circle, Oval } from '@shopify/react-native-skia';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
-import { SharedValue, useDerivedValue } from 'react-native-reanimated';
+import { StyleSheet, View, useWindowDimensions, Text } from 'react-native';
+import Animated, { SharedValue, useDerivedValue, useAnimatedProps } from 'react-native-reanimated';
 import { IFaceDetection } from '../../features/camera/frame-processors/types';
 import { COLORS } from '../../theme';
+import { useUserGuidance } from '../../features/camera/hooks/useUserGuidance';
 
 interface FaceGuideProps {
   face: SharedValue<IFaceDetection | null>;
@@ -11,12 +12,15 @@ interface FaceGuideProps {
   testID?: string;
 }
 
+const AnimatedText = Animated.createAnimatedComponent(Text);
+
 export const FaceGuide: React.FC<FaceGuideProps> = ({ 
   face, 
   frameDimensions,
   testID = 'face-guide' 
 }) => {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const { guidance } = useUserGuidance(face, frameDimensions);
 
   // Mapping logic: map native camera coordinates to screen coordinates
   const derivedFace = useDerivedValue(() => {
@@ -62,6 +66,12 @@ export const FaceGuide: React.FC<FaceGuideProps> = ({
     ].filter(Boolean) as { x: number; y: number }[];
   });
 
+  const animatedTextProps = useAnimatedProps(() => {
+    return {
+      text: guidance.value,
+    } as any;
+  });
+
   return (
     <View style={StyleSheet.absoluteFill} testID={testID} pointerEvents="none">
       <Canvas style={StyleSheet.absoluteFill}>
@@ -95,6 +105,36 @@ export const FaceGuide: React.FC<FaceGuideProps> = ({
           />
         ))}
       </Canvas>
+
+      {/* Guidance Message Overlay */}
+      <View style={styles.guidanceContainer}>
+        <AnimatedText 
+          animatedProps={animatedTextProps}
+          style={styles.guidanceText}
+          testID="guidance-text"
+        />
+      </View>
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  guidanceContainer: {
+    position: 'absolute',
+    top: '10%',
+    width: '100%',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  guidanceText: {
+    color: COLORS.TEXT_PRIMARY,
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+});

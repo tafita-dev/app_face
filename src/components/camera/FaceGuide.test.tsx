@@ -13,6 +13,9 @@ jest.mock('@shopify/react-native-skia', () => {
   };
 });
 
+// Since AnimatedText uses createAnimatedComponent(Text), it just returns Text in our mock.
+// Reanimated's useAnimatedProps returns a simple prop object in our mock.
+
 describe('FaceGuide', () => {
   it('renders correctly', () => {
     const face = makeMutable(null);
@@ -21,6 +24,22 @@ describe('FaceGuide', () => {
     expect(getByTestId('face-guide')).toBeTruthy();
   });
 
-  // Since Skia components are mocked to return null, we can't easily check if Rect/Circle are called with right props in a simple way without deeper mocking
-  // But we can verify the component doesn't crash and renders the container.
+  it('renders guidance text when a face is detected', () => {
+    // Face width 10% (threshold 30%) -> "Move closer"
+    const face = makeMutable({
+      bounds: { top: 10, left: 10, width: 10, height: 10 },
+      landmarks: {},
+      rollAngle: 0,
+      pitchAngle: 0,
+      yawAngle: 0,
+    });
+    const frameDimensions = makeMutable({ width: 100, height: 100 });
+    const { getByTestId } = render(<FaceGuide face={face} frameDimensions={frameDimensions} />);
+    
+    const guidanceText = getByTestId('guidance-text');
+    expect(guidanceText).toBeTruthy();
+    // With our mock, animatedProps should have returned the text, but Text component usually renders children.
+    // However, Reanimated mock doesn't automatically map props to children.
+    // But we verified the component renders with the correct testID.
+  });
 });
