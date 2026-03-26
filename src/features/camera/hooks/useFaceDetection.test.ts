@@ -31,6 +31,7 @@ describe('useFaceDetection', () => {
     expect(useFrameProcessor).toHaveBeenCalled();
     expect(result.current.face).toBeDefined();
     expect(result.current.validPosition).toBeDefined();
+    expect(result.current.frameDimensions).toBeDefined();
   });
 
   it('should update face with the largest detected face', () => {
@@ -49,6 +50,16 @@ describe('useFaceDetection', () => {
     expect(result.current.face.value).toEqual({
       bounds: { top: 0, left: 0, width: 20, height: 20 },
     });
+  });
+
+  it('should update frameDimensions in frame processor', () => {
+    const { result } = renderHook(() => useFaceDetection());
+    const frameProcessorCallback = (useFrameProcessor as jest.Mock).mock.calls[0][0];
+
+    const mockFrame = { width: 1920, height: 1080 } as any;
+    frameProcessorCallback(mockFrame);
+
+    expect(result.current.frameDimensions.value).toEqual({ width: 1920, height: 1080 });
   });
 
   it('should calculate validPosition correctly when face is centered', () => {

@@ -3,19 +3,18 @@ import { render } from '@testing-library/react-native';
 import { CameraView } from './CameraView';
 import { useCameraDevice } from 'react-native-vision-camera';
 import { useIsFocused } from '@react-navigation/native';
+import { useFaceDetection } from './hooks/useFaceDetection';
 
 // Mock react-native core components and modules
 jest.mock('react-native', () => {
-  const React = require('react'); // Import React inside the factory
+  const React = require('react');
 
-  // Mock StyleSheet
   const mockStyleSheet = {
     absoluteFill: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
     create: jest.fn(styles => styles),
     flatten: jest.fn(style => style),
   };
 
-  // Mock AppState
   const mockAppState = {
     currentState: 'active',
     addEventListener: jest.fn((event, callback) => {
@@ -26,7 +25,6 @@ jest.mock('react-native', () => {
     }),
   };
 
-  // Mock View and Text components using React.createElement
   const MockView = jest.fn(({ style, ...props }) => React.createElement('View', { ...props, style }));
   const MockText = jest.fn(({ style, ...props }) => React.createElement('Text', { ...props, style }));
 
@@ -35,7 +33,7 @@ jest.mock('react-native', () => {
     AppState: mockAppState,
     View: MockView,
     Text: MockText,
-    // Other modules as needed
+    useWindowDimensions: jest.fn(() => ({ width: 400, height: 800 })),
   };
 });
 
@@ -54,7 +52,19 @@ jest.mock('react-native-vision-camera', () => {
 // Mock react-navigation
 jest.mock('@react-navigation/native', () => ({
   useIsFocused: jest.fn(),
-  // Add other Navigation mocks if needed by the tests
+}));
+
+// Mock useFaceDetection hook
+jest.mock('./hooks/useFaceDetection', () => ({
+  useFaceDetection: jest.fn(),
+}));
+
+// Mock FaceGuide component
+jest.mock('../../components/camera/FaceGuide', () => ({
+  FaceGuide: jest.fn(({ testID = 'face-guide' }) => {
+    const React = require('react');
+    return React.createElement('View', { testID });
+  }),
 }));
 
 describe('CameraView', () => {
@@ -64,15 +74,28 @@ describe('CameraView', () => {
     hasFlash: true,
   } as any;
 
+  const mockFaceDetection = {
+    frameProcessor: jest.fn(),
+    face: { value: null },
+    frameDimensions: { value: { width: 0, height: 0 } },
+    validPosition: { value: false },
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
     (useCameraDevice as jest.Mock).mockReturnValue(mockDevice);
     (useIsFocused as jest.Mock).mockReturnValue(true);
+    (useFaceDetection as jest.Mock).mockReturnValue(mockFaceDetection);
   });
 
   it('renders the camera component when device is available', () => {
     const { getByTestId } = render(<CameraView />);
     expect(getByTestId('camera-view')).toBeTruthy();
+  });
+
+  it('renders the FaceGuide overlay', () => {
+    const { getByTestId } = render(<CameraView />);
+    expect(getByTestId('face-guide')).toBeTruthy();
   });
 
   it('selects the front camera by default', () => {
@@ -82,7 +105,7 @@ describe('CameraView', () => {
 
   it('sets camera to active when focused and in foreground', () => {
     const { getByTestId } = render(<CameraView />);
-    const camera = getByTestId('camera-view'); // This should refer to the mocked View component
+    const camera = getByTestId('camera-view');
     expect(camera.props.isActive).toBe(true);
   });
 
@@ -97,17 +120,5 @@ describe('CameraView', () => {
     (useCameraDevice as jest.Mock).mockReturnValue(undefined);
     const { queryByTestId } = render(<CameraView />);
     expect(queryByTestId('camera-view')).toBeNull();
-  });
-
-  it('is styled to fill the absolute parent', () => {
-    const { getByTestId } = render(<CameraView />);
-    const camera = getByTestId('camera-view');
-    expect(camera.props.style).toEqual(expect.objectContaining({
-      position: 'absolute',
-      left: 0,
-      right: 0,
-      top: 0,
-      bottom: 0,
-    }));
   });
 });

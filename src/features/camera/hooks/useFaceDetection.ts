@@ -51,5 +51,5 @@ export const useFaceDetection = () => {
     }
   }, []);
 
-  return { face, validPosition, frameProcessor };
+  return { face, validPosition, frameProcessor, frameDimensions };
 };
