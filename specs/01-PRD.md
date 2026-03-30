@@ -13,9 +13,10 @@
 *   **Rule 3 (Temporal):** Analyze frame-to-frame consistency to detect abrupt AI-generated transitions.
 
 ### Feature: Anti-Deepfake Analysis
-*   **Rule 1:** Analyze frequency domains for GAN-generated artifacts.
-*   **Rule 2:** Detect "ghosting" or unnatural blending around the face edges.
-*   **Rule 3:** Verify pulse-based liveness (rPPG) if camera quality permits.
+*   **Rule 1:** Analyze frequency domains for GAN-generated artifacts using custom TFLite models.
+*   **Rule 2:** Detect "ghosting" or unnatural blending around the face edges (temporal edge analysis).
+*   **Rule 3:** Analyze specular highlights and eye reflections for consistency across multiple frames.
+*   **Rule 4:** Provide a "Deepfake Confidence Score" (0.0 to 1.0) for each verified session.
 
 ### Feature: Secure Biometric Matching
 *   **Rule 1:** Convert face images into non-reversible mathematical embeddings.

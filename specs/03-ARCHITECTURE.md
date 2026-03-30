@@ -15,8 +15,9 @@
     *   **Unified Face Processor:** A single JSI-based processor handles both Face Detection and Landmark Tracking in a single pass to minimize latency.
     *   **Liveness Detection Engine:** 
         *   **Active Liveness:** Uses landmark temporal analysis (blink, mouth opening, head rotation) via Reanimated Shared Values.
-        *   **Passive Liveness:** Uses ML models (TFLite) to analyze texture and Moire patterns to detect replays.
-    *   **JSI Modules:** Custom native frame processors are used to bridge Vision Camera's `Frame` objects to MLKit and TFLite without bridge serialization.
+        *   **Passive Liveness:** Uses ML models (TFLite) to analyze texture and Moire patterns.
+        *   **Anti-Deepfake Engine:** Uses `react-native-fast-tflite` to run frequency-domain analysis and temporal consistency checks.
+    *   **JSI Modules:** Custom native frame processors bridge Vision Camera's `Frame` objects to MLKit and TFLite without bridge serialization.
     *   **Feedback Loop:** Detection results (landmarks, liveness scores) are passed back to the JS thread via Reanimated Shared Values for zero-lag UI updates (Skia overlays).
 
 ## 3. Liveness State Machine
@@ -24,12 +25,14 @@ To guide users through active liveness checks, the application implements a stri
 1.  **INITIALIZING:** Camera warming up, checking permissions.
 2.  **POSITIONING:** Waiting for face to be centered and at correct distance.
 3.  **CHALLENGE_BLINK:** Prompt user to blink.
-4.  **CHALLENGE_SMILE:** Prompt user to smile (or other random action).
-5.  **CHALLENGE_ROTATION:** Prompt user to turn head.
-6.  **ANALYZING:** Final score aggregation and anti-deepfake check.
-7.  **SUCCESS / FAILURE:** Final result.
+4.  **CHALLENGE_SMILE:** Prompt user to smile (Planned).
+5.  **CHALLENGE_ROTATION:** Prompt user to turn head left/right (Yaw).
+6.  **CHALLENGE_PITCH:** Prompt user to look up/down (Pitch).
+7.  **ANALYZING:** Final score aggregation and anti-deepfake check (Passive analysis).
+8.  **SUCCESS:** Verification successful.
+9.  **FAILURE:** Verification failed or timed out.
 
-## 3. Face Data Schema
+## 4. Face Data Schema
 To ensure consistency across the application, all face detection modules must return data following this interface:
 
 ```typescript
@@ -58,11 +61,18 @@ interface IFaceDetection {
   rollAngle: number;
   pitchAngle: number;
   yawAngle: number;
-  livenessScore?: number; // Calculated later in Epic 3
+  livenessScore?: number;
+  deepfakeScore?: number;
+  textureAnalysis?: {
+    pixelVariation: number;
+    moirePatternDetected: boolean;
+    highFrequencyScore: number;
+    frequencyArtifacts?: number;
+  };
 }
 ```
 
-## 4. Directory Structure
+## 5. Directory Structure
 ```text
 src/
 ├── api/             # API clients and data fetching
