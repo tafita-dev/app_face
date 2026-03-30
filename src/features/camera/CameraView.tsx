@@ -1,18 +1,33 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, AppState, AppStatus } from 'react-native';
+import { StyleSheet, AppState, AppStateStatus } from 'react-native';
 import { Camera, useCameraDevice } from 'react-native-vision-camera';
 import { useIsFocused } from '@react-navigation/native';
 import { useFaceDetection } from './hooks/useFaceDetection';
 import { FaceGuide } from '../../components/camera/FaceGuide';
+import { LivenessState } from '../verification/liveness/useLivenessMachine';
 
-export const CameraView: React.FC = () => {
+interface CameraViewProps {
+  livenessState: LivenessState;
+  onFaceDetection: (face: any, dimensions: any, validPosition: any) => void;
+}
+
+export const CameraView: React.FC<CameraViewProps> = ({ 
+  livenessState,
+  onFaceDetection 
+}) => {
   const device = useCameraDevice('front');
   const isFocused = useIsFocused();
-  const [appState, setAppState] = useState<AppStatus>(AppState.currentState);
-  const { frameProcessor, face, frameDimensions } = useFaceDetection();
+  const [appState, setAppState] = useState<AppStateStatus>(
+    AppState.currentState,
+  );
+  const { frameProcessor, face, frameDimensions, validPosition } = useFaceDetection();
 
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
+    onFaceDetection(face, frameDimensions, validPosition);
+  }, [face, frameDimensions, validPosition, onFaceDetection]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
       setAppState(nextAppState);
     });
 
@@ -37,7 +52,11 @@ export const CameraView: React.FC = () => {
         pixelFormat="yuv"
         testID="camera-view"
       />
-      <FaceGuide face={face} frameDimensions={frameDimensions} />
+      <FaceGuide 
+        face={face} 
+        frameDimensions={frameDimensions} 
+        livenessState={livenessState}
+      />
     </>
   );
 };

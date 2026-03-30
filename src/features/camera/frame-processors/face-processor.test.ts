@@ -46,6 +46,29 @@ describe('Face Processor', () => {
     expect(result?.[0]).toEqual(mockFace);
   });
 
+  test('should return face detection result with texture analysis data', () => {
+    const mockFace = {
+      bounds: { top: 100, left: 100, width: 200, height: 200 },
+      landmarks: {},
+      rollAngle: 0,
+      pitchAngle: 0,
+      yawAngle: 0,
+      textureAnalysis: {
+        variance: 12.5,
+        moireDetected: false,
+      },
+    };
+    (plugin!.call as jest.Mock).mockReturnValue([mockFace]);
+    const mockFrame = { width: 1920, height: 1080 } as unknown as Frame;
+
+    const result = trackFacialLandmarks(mockFrame);
+
+    expect(result).not.toBeNull();
+    expect(result?.[0].textureAnalysis).toBeDefined();
+    expect(result?.[0].textureAnalysis?.variance).toBe(12.5);
+    expect(result?.[0].textureAnalysis?.moireDetected).toBe(false);
+  });
+
   test('should handle multiple faces and return them all', () => {
      const mockFaces = [
       {

@@ -19,7 +19,7 @@ class FaceDetectorPlugin(
     private val detectorOptions = FaceDetectorOptions.Builder()
         .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
         .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
-        .setContourMode(FaceDetectorOptions.CONTOUR_MODE_NONE)
+        .setContourMode(FaceDetectorOptions.CONTOUR_MODE_ALL)
         .build()
 
     private val detector = FaceDetection.getClient(detectorOptions)
@@ -82,9 +82,94 @@ class FaceDetectorPlugin(
 
             map["landmarks"] = landmarks
 
+            // Contours
+            val contoursMap = mutableMapOf<String, List<Map<String, Double>>>()
+            val contourTypes = intArrayOf(
+                com.google.mlkit.vision.face.FaceContour.FACE,
+                com.google.mlkit.vision.face.FaceContour.LEFT_EYE,
+                com.google.mlkit.vision.face.FaceContour.RIGHT_EYE,
+                com.google.mlkit.vision.face.FaceContour.LEFT_EYEBROW_TOP,
+                com.google.mlkit.vision.face.FaceContour.LEFT_EYEBROW_BOTTOM,
+                com.google.mlkit.vision.face.FaceContour.RIGHT_EYEBROW_TOP,
+                com.google.mlkit.vision.face.FaceContour.RIGHT_EYEBROW_BOTTOM,
+                com.google.mlkit.vision.face.FaceContour.NOSE_BRIDGE,
+                com.google.mlkit.vision.face.FaceContour.NOSE_BOTTOM,
+                com.google.mlkit.vision.face.FaceContour.LEFT_CHEEK,
+                com.google.mlkit.vision.face.FaceContour.RIGHT_CHEEK,
+                com.google.mlkit.vision.face.FaceContour.UPPER_LIP_TOP,
+                com.google.mlkit.vision.face.FaceContour.UPPER_LIP_BOTTOM,
+                com.google.mlkit.vision.face.FaceContour.LOWER_LIP_TOP,
+                com.google.mlkit.vision.face.FaceContour.LOWER_LIP_BOTTOM
+            )
+
+            val contourNames = arrayOf(
+                "FACE", "LEFT_EYE", "RIGHT_EYE", "LEFT_EYEBROW_TOP", "LEFT_EYEBROW_BOTTOM",
+                "RIGHT_EYEBROW_TOP", "RIGHT_EYEBROW_BOTTOM", "NOSE_BRIDGE", "NOSE_BOTTOM",
+                "LEFT_CHEEK", "RIGHT_CHEEK", "UPPER_LIP_TOP", "UPPER_LIP_BOTTOM",
+                "LOWER_LIP_TOP", "LOWER_LIP_BOTTOM"
+            )
+
+            for (i in contourTypes.indices) {
+                face.getContour(contourTypes[i])?.let { contour ->
+                    contoursMap[contourNames[i]] = contour.points.map { point ->
+                        mapOf("x" to point.x.toDouble(), "y" to point.y.toDouble())
+                    }
+                }
+            }
+            map["contours"] = contoursMap
+
+            // --- Passive Texture Analysis (Emergency Fix) ---
+            // Calculate pixel variance in the face region as a fallback for TFLite
+            val variance = calculateLaplacianVariance(mediaImage, face.boundingBox)
+            map["textureAnalysis"] = mapOf(
+                "variance" to variance,
+                "moireDetected" to false // To be replaced with TFLite Moire detector
+            )
+
             result.add(map)
         }
 
         return result
+    }
+
+    private fun calculateLaplacianVariance(image: Image, bounds: android.graphics.Rect): Double {
+        val plane = image.planes[0] // Use Y plane for variance calculation
+        val buffer = plane.buffer
+        val width = image.width
+        val height = image.height
+        val rowStride = plane.rowStride
+        val pixelStride = plane.pixelStride
+
+        // Clamp bounds to image dimensions
+        val left = bounds.left.coerceIn(0, width - 1)
+        val top = bounds.top.coerceIn(0, height - 1)
+        val right = bounds.right.coerceIn(0, width - 1)
+        val bottom = bounds.bottom.coerceIn(0, height - 1)
+
+        if (right <= left || bottom <= top) return 0.0
+
+        var sum = 0.0
+        var sumSq = 0.0
+        var count = 0
+
+        // Simple Laplacian operator: [0, 1, 0; 1, -4, 1; 0, 1, 0]
+        for (y in top + 1 until bottom - 1) {
+            for (x in left + 1 until right - 1) {
+                val center = buffer.get(y * rowStride + x * pixelStride).toInt() and 0xFF
+                val leftPixel = buffer.get(y * rowStride + (x - 1) * pixelStride).toInt() and 0xFF
+                val rightPixel = buffer.get(y * rowStride + (x + 1) * pixelStride).toInt() and 0xFF
+                val topPixel = buffer.get((y - 1) * rowStride + x * pixelStride).toInt() and 0xFF
+                val bottomPixel = buffer.get((y + 1) * rowStride + x * pixelStride).toInt() and 0xFF
+
+                val laplacian = (leftPixel + rightPixel + topPixel + bottomPixel - 4 * center).toDouble()
+                sum += laplacian
+                sumSq += laplacian * laplacian
+                count++
+            }
+        }
+
+        if (count == 0) return 0.0
+        val mean = sum / count
+        return (sumSq / count) - (mean * mean)
     }
 }

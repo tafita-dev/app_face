@@ -16,7 +16,30 @@ jest.mock('react-native-worklets', () => ({
 
 jest.mock('react-native-reanimated', () => {
   const React = require('react');
+  const View = (props: any) => React.createElement('View', props);
+  const Text = (props: any) => React.createElement('Text', props);
+  const Image = (props: any) => React.createElement('Image', props);
+  const ScrollView = (props: any) => React.createElement('ScrollView', props);
+
+  const Animated = {
+    View,
+    Text,
+    Image,
+    ScrollView,
+    createAnimatedComponent: (Component: any) => Component,
+    timing: jest.fn(() => ({ start: jest.fn() })),
+    spring: jest.fn(() => ({ start: jest.fn() })),
+    Value: jest.fn(() => ({ setValue: jest.fn() })),
+    event: jest.fn(),
+    add: jest.fn(),
+    divide: jest.fn(),
+    multiply: jest.fn(),
+    sub: jest.fn(),
+  };
+
   return {
+    __esModule: true,
+    default: Animated,
     useSharedValue: (val: any) => ({ value: val }),
     useDerivedValue: (cb: any) => ({
       get value() {
@@ -27,11 +50,23 @@ jest.mock('react-native-reanimated', () => {
     useAnimatedProps: (cb: any) => cb(),
     withTiming: (val: any) => val,
     withSpring: (val: any) => val,
-    runOnJS: (fn: any) => fn,
+    withRepeat: (val: any) => val,
+    withSequence: (...args: any[]) => args[0],
+    runOnJS: (fn: any) => (...args: any[]) => {
+      if (typeof fn === 'function') {
+        fn(...args);
+      }
+    },
     runOnUI: (fn: any) => fn,
     makeMutable: (val: any) => ({ value: val }),
     interpolate: (x, y, z) => x,
     createAnimatedComponent: (Component: any) => Component,
+    useAnimatedReaction: (prepare: any, react: any) => {
+      const val = prepare();
+      React.useEffect(() => {
+        react(val, undefined);
+      }, [JSON.stringify(val)]);
+    },
   };
 });
 
@@ -68,16 +103,43 @@ jest.mock('@react-navigation/native-stack', () => {
   };
 });
 
+jest.mock('@shopify/react-native-skia', () => {
+  const React = require('react');
+  return {
+    Canvas: ({ children }: any) => children,
+    Rect: (props: any) => null,
+    Circle: (props: any) => null,
+    Oval: (props: any) => null,
+    Path: (props: any) => null,
+    Group: ({ children }: any) => children,
+    useCanvasRef: () => ({ current: null }),
+  };
+});
+
 // Mock react-native-vision-camera
 jest.mock('react-native-vision-camera', () => {
   const React = require('react');
+  const Camera = React.forwardRef((props, ref) => {
+    return React.createElement('View', { ...props, ref, testID: 'camera-view' });
+  });
+
+  const getCameraPermissionStatus = jest.fn(() => 'not-determined');
+  const requestCameraPermission = jest.fn();
+
+  Camera.getCameraPermissionStatus = getCameraPermissionStatus;
+  Camera.requestCameraPermission = requestCameraPermission;
+
   return {
-    Camera: React.forwardRef((props, ref) => {
-      return React.createElement('View', { ...props, ref, testID: 'camera-view' });
-    }),
+    Camera,
     useCameraDevice: jest.fn(),
-    getCameraPermissionStatus: jest.fn(() => 'not-determined'),
-    requestCameraPermission: jest.fn(),
+    getCameraPermissionStatus,
+    requestCameraPermission,
+    useFrameProcessor: jest.fn(),
+    VisionCameraProxy: {
+      initFrameProcessorPlugin: jest.fn(() => ({
+        call: jest.fn(),
+      })),
+    },
   };
 });
 
@@ -93,5 +155,6 @@ jest.mock('@react-navigation/native', () => {
       dispatch: jest.fn(),
       setOptions: jest.fn(),
     }),
+    useIsFocused: jest.fn(() => true),
   };
 });

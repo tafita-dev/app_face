@@ -9,13 +9,13 @@
 ## Epic 2: Face Detection & Landmark Tracking
 
 - **Goal:** Implement on-device face detection using MLKit and visualize landmarks with Skia.
-- **Status:** IN_PROGRESS
+- **Status:** DONE
 - **Ref:** @specs/01-PRD.md#feature-real-time-face-detection
 
 ## Epic 3: Liveness Detection (Active & Passive)
 
 - **Goal:** Implement blink detection, head movement tracking, and texture analysis.
-- **Status:** BACKLOG
+- **Status:** IN_PROGRESS
 - **Ref:** @specs/01-PRD.md#feature-multi-modal-liveness-detection
 
 ## Epic 4: Anti-Deepfake Analysis

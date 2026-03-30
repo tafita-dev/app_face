@@ -4,6 +4,7 @@ import { CameraView } from './CameraView';
 import { useCameraDevice } from 'react-native-vision-camera';
 import { useIsFocused } from '@react-navigation/native';
 import { useFaceDetection } from './hooks/useFaceDetection';
+import { LivenessState } from '../verification/liveness/useLivenessMachine';
 
 // Mock react-native core components and modules
 jest.mock('react-native', () => {
@@ -81,6 +82,11 @@ describe('CameraView', () => {
     validPosition: { value: false },
   };
 
+  const defaultProps = {
+    livenessState: LivenessState.POSITIONING,
+    onFaceDetection: jest.fn(),
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
     (useCameraDevice as jest.Mock).mockReturnValue(mockDevice);
@@ -89,36 +95,36 @@ describe('CameraView', () => {
   });
 
   it('renders the camera component when device is available', () => {
-    const { getByTestId } = render(<CameraView />);
+    const { getByTestId } = render(<CameraView {...defaultProps} />);
     expect(getByTestId('camera-view')).toBeTruthy();
   });
 
   it('renders the FaceGuide overlay', () => {
-    const { getByTestId } = render(<CameraView />);
+    const { getByTestId } = render(<CameraView {...defaultProps} />);
     expect(getByTestId('face-guide')).toBeTruthy();
   });
 
   it('selects the front camera by default', () => {
-    render(<CameraView />);
+    render(<CameraView {...defaultProps} />);
     expect(useCameraDevice).toHaveBeenCalledWith('front');
   });
 
   it('sets camera to active when focused and in foreground', () => {
-    const { getByTestId } = render(<CameraView />);
+    const { getByTestId } = render(<CameraView {...defaultProps} />);
     const camera = getByTestId('camera-view');
     expect(camera.props.isActive).toBe(true);
   });
 
   it('sets camera to inactive when screen is not focused', () => {
     (useIsFocused as jest.Mock).mockReturnValue(false);
-    const { getByTestId } = render(<CameraView />);
+    const { getByTestId } = render(<CameraView {...defaultProps} />);
     const camera = getByTestId('camera-view');
     expect(camera.props.isActive).toBe(false);
   });
 
   it('renders nothing when no camera device is found', () => {
     (useCameraDevice as jest.Mock).mockReturnValue(undefined);
-    const { queryByTestId } = render(<CameraView />);
+    const { queryByTestId } = render(<CameraView {...defaultProps} />);
     expect(queryByTestId('camera-view')).toBeNull();
   });
 });

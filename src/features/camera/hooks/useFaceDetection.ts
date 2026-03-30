@@ -17,10 +17,10 @@ export const useFaceDetection = () => {
 
     const faceCenterX = bounds.left + bounds.width / 2;
     const faceCenterY = bounds.top + bounds.height / 2;
-    
+
     const centerX = frameWidth / 2;
     const centerY = frameHeight / 2;
-    
+
     const toleranceX = frameWidth * 0.2;
     const toleranceY = frameHeight * 0.2;
 
@@ -30,17 +30,19 @@ export const useFaceDetection = () => {
     );
   });
 
-  const frameProcessor = useFrameProcessor((frame) => {
+  const frameProcessor = useFrameProcessor(frame => {
     'worklet';
     frameDimensions.value = { width: frame.width, height: frame.height };
-    
+
     const detectedFaces = trackFacialLandmarks(frame);
     if (detectedFaces && detectedFaces.length > 0) {
       // Prioritize the largest face
       let largestFace = detectedFaces[0];
       for (let i = 1; i < detectedFaces.length; i++) {
-        const area = detectedFaces[i].bounds.width * detectedFaces[i].bounds.height;
-        const largestArea = largestFace.bounds.width * largestFace.bounds.height;
+        const area =
+          detectedFaces[i].bounds.width * detectedFaces[i].bounds.height;
+        const largestArea =
+          largestFace.bounds.width * largestFace.bounds.height;
         if (area > largestArea) {
           largestFace = detectedFaces[i];
         }

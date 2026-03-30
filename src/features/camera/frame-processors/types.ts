@@ -24,4 +24,8 @@ export interface IFaceDetection {
   pitchAngle: number;
   yawAngle: number;
   livenessScore?: number;
+  textureAnalysis?: {
+    variance: number;
+    moireDetected: boolean;
+  };
 }

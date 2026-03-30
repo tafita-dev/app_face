@@ -1,8 +1,20 @@
 import { renderHook } from '@testing-library/react-native';
 import { useUserGuidance } from './useUserGuidance';
 import { makeMutable } from 'react-native-reanimated';
+import { LivenessState } from '../../verification/liveness/useLivenessMachine';
 
 describe('useUserGuidance', () => {
+  it('returns challenge instructions when in challenge state', () => {
+    const face = makeMutable(null);
+    const frameDimensions = makeMutable({ width: 100, height: 100 });
+    
+    const { result } = renderHook(() => 
+      useUserGuidance(face as any, frameDimensions as any, LivenessState.CHALLENGE_BLINK)
+    );
+    
+    expect(result.current.guidance.value).toBe('Blink your eyes');
+  });
+
   it('returns "Move closer" when face width is less than 30% of screen width', () => {
     const face = makeMutable({
       bounds: { top: 0, left: 0, width: 25, height: 25 },
@@ -13,7 +25,9 @@ describe('useUserGuidance', () => {
     });
     const frameDimensions = makeMutable({ width: 100, height: 100 });
     
-    const { result } = renderHook(() => useUserGuidance(face as any, frameDimensions as any));
+    const { result } = renderHook(() => 
+      useUserGuidance(face as any, frameDimensions as any, LivenessState.POSITIONING)
+    );
     
     expect(result.current.guidance.value).toBe('Move closer');
   });
@@ -30,7 +44,9 @@ describe('useUserGuidance', () => {
     });
     const frameDimensions = makeMutable({ width: 100, height: 100 });
     
-    const { result } = renderHook(() => useUserGuidance(face as any, frameDimensions as any));
+    const { result } = renderHook(() => 
+      useUserGuidance(face as any, frameDimensions as any, LivenessState.POSITIONING)
+    );
     
     expect(result.current.guidance.value).toBe('Center your face');
   });
@@ -47,17 +63,21 @@ describe('useUserGuidance', () => {
     });
     const frameDimensions = makeMutable({ width: 100, height: 100 });
     
-    const { result } = renderHook(() => useUserGuidance(face as any, frameDimensions as any));
+    const { result } = renderHook(() => 
+      useUserGuidance(face as any, frameDimensions as any, LivenessState.POSITIONING)
+    );
     
     expect(result.current.guidance.value).toBe('Perfect, stay still');
   });
 
-  it('returns empty when no face is present', () => {
+  it('returns position prompt when no face is present in POSITIONING', () => {
     const face = makeMutable(null);
     const frameDimensions = makeMutable({ width: 100, height: 100 });
     
-    const { result } = renderHook(() => useUserGuidance(face as any, frameDimensions as any));
+    const { result } = renderHook(() => 
+      useUserGuidance(face as any, frameDimensions as any, LivenessState.POSITIONING)
+    );
     
-    expect(result.current.guidance.value).toBe('');
+    expect(result.current.guidance.value).toBe('Position your face in the guide');
   });
 });
