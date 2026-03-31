@@ -24,8 +24,11 @@ export interface IFaceDetection {
   pitchAngle: number;
   yawAngle: number;
   livenessScore?: number;
+  deepfakeScore?: number;
   textureAnalysis?: {
-    variance: number;
-    moireDetected: boolean;
+    pixelVariation: number;
+    moirePatternDetected: boolean;
+    highFrequencyScore: number;
+    frequencyArtifacts?: number;
   };
 }

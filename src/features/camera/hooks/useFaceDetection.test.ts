@@ -20,6 +20,19 @@ jest.mock('../frame-processors/face-processor', () => ({
   trackFacialLandmarks: jest.fn(),
 }));
 
+// Simple Mock react-native-reanimated
+jest.mock('react-native-reanimated', () => {
+  return {
+    useSharedValue: jest.fn((val: any) => ({ value: val })),
+    useDerivedValue: jest.fn((cb: any) => ({
+      get value() {
+        return cb();
+      },
+    })),
+    runOnJS: (fn: any) => fn,
+  };
+});
+
 describe('useFaceDetection', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -103,5 +116,30 @@ describe('useFaceDetection', () => {
     frameProcessorCallback(mockFrame);
 
     expect(result.current.face.value).toBeNull();
+  });
+
+  it('should update deepfake score every 10 frames if model is provided', () => {
+    const mockTrackFacialLandmarks = trackFacialLandmarks as jest.Mock;
+    const mockModel = { run: jest.fn().mockReturnValue([[0.85]]) };
+    const { result } = renderHook(() => useFaceDetection(mockModel as any));
+    const frameProcessorCallback = (useFrameProcessor as jest.Mock).mock.calls[0][0];
+
+    const mockFrame = {
+      width: 100,
+      height: 100,
+      toArrayBuffer: jest.fn(() => new ArrayBuffer(100 * 100 * 4)),
+    } as any;
+    mockTrackFacialLandmarks.mockReturnValue([{ bounds: { top: 0, left: 0, width: 20, height: 20 } }]);
+
+    // Run for 9 frames
+    for (let i = 0; i < 9; i++) {
+      frameProcessorCallback(mockFrame);
+    }
+    expect(mockModel.run).not.toHaveBeenCalled();
+
+    // 10th frame
+    frameProcessorCallback(mockFrame);
+    expect(mockModel.run).toHaveBeenCalled();
+    expect(result.current.face.value.deepfakeScore).toBe(0.85);
   });
 });
