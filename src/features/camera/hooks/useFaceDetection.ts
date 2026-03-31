@@ -3,12 +3,14 @@ import { useFrameProcessor } from 'react-native-vision-camera';
 import { trackFacialLandmarks } from '../frame-processors/face-processor';
 import { IFaceDetection } from '../frame-processors/types';
 import { TensorflowModel } from 'react-native-fast-tflite';
-import { cropFace } from '../frame-processors/image-utils';
+import { cropFace, extractTemporalFeatures } from '../frame-processors/image-utils';
+import { useTemporalConsistency } from '../../verification/deepfake/hooks/useTemporalConsistency';
 
 export const useFaceDetection = (antiDeepfakeModel?: TensorflowModel | null) => {
   const face = useSharedValue<IFaceDetection | null>(null);
   const frameDimensions = useSharedValue({ width: 0, height: 0 });
   const frameCount = useSharedValue(0);
+  const { analyzeFrame } = useTemporalConsistency();
 
   const validPosition = useDerivedValue(() => {
     if (!face.value) return false;
@@ -53,6 +55,14 @@ export const useFaceDetection = (antiDeepfakeModel?: TensorflowModel | null) => 
           }
         }
 
+        // Perform Temporal Consistency Analysis every frame
+        const { highlights, edgeVariance } = extractTemporalFeatures(
+          frame,
+          largestFace.landmarks,
+          largestFace.bounds,
+        );
+        const temporalScore = analyzeFrame(largestFace.yawAngle, highlights, edgeVariance);
+
         // Run deepfake analysis every 10 frames if the model is available
         if (antiDeepfakeModel != null && frameCount.value % 10 === 0) {
           try {
@@ -74,7 +84,13 @@ export const useFaceDetection = (antiDeepfakeModel?: TensorflowModel | null) => 
             const results = antiDeepfakeModel.run([croppedFace]);
             
             if (results && results.length > 0) {
-              const score = results[0][0] as number;
+              let score = results[0][0] as number;
+
+              // Correlate with Temporal Score: temporalScore is consistency (0-1)
+              // We want to INCREASE the deepfake probability if consistency is LOW.
+              // So deepfakeScore = (score + (1 - temporalScore)) / 2
+              score = (score + (1 - temporalScore)) / 2;
+
               largestFace.deepfakeScore = score;
               if (largestFace.textureAnalysis == null) {
                 largestFace.textureAnalysis = {
@@ -101,7 +117,7 @@ export const useFaceDetection = (antiDeepfakeModel?: TensorflowModel | null) => 
         face.value = null;
       }
     },
-    [antiDeepfakeModel],
+    [antiDeepfakeModel, analyzeFrame],
   );
 
   return { face, validPosition, frameProcessor, frameDimensions };

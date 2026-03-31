@@ -47,3 +47,63 @@ export function cropFace(
 
   return result;
 }
+
+/**
+ * Extracts temporal features like specular highlights and edge artifacts from the frame.
+ * Samples eye and forehead regions based on facial landmarks.
+ */
+export function extractTemporalFeatures(
+  frame: Frame,
+  landmarks: { leftEye?: { x: number; y: number }; rightEye?: { x: number; y: number }; noseBase?: { x: number; y: number } },
+  bounds: { left: number; top: number; width: number; height: number }
+): { highlights: number; edgeVariance: number } {
+  'worklet';
+  
+  let highlights = 0;
+  let edgeVariance = 0;
+  
+  try {
+    const frameBuffer = frame.toArrayBuffer();
+    const frameData = new Uint8Array(frameBuffer);
+    const frameWidth = frame.width;
+    
+    // Sample eye areas for highlights
+    let sampleCount = 0;
+    if (landmarks.leftEye) {
+      const x = Math.floor(landmarks.leftEye.x);
+      const y = Math.floor(landmarks.leftEye.y);
+      const idx = (y * frameWidth + x) * 4;
+      highlights += (frameData[idx] + frameData[idx + 1] + frameData[idx + 2]) / 3;
+      sampleCount++;
+    }
+    if (landmarks.rightEye) {
+      const x = Math.floor(landmarks.rightEye.x);
+      const y = Math.floor(landmarks.rightEye.y);
+      const idx = (y * frameWidth + x) * 4;
+      highlights += (frameData[idx] + frameData[idx + 1] + frameData[idx + 2]) / 3;
+      sampleCount++;
+    }
+    
+    if (sampleCount > 0) highlights /= sampleCount;
+
+    // Estimate edge variance around the face boundary
+    // For simplicity, we sample a few points on the left and right edges
+    const leftX = Math.floor(bounds.left);
+    const rightX = Math.floor(bounds.left + bounds.width);
+    const centerY = Math.floor(bounds.top + bounds.height / 2);
+    
+    const leftIdx = (centerY * frameWidth + leftX) * 4;
+    const rightIdx = (centerY * frameWidth + rightX) * 4;
+    
+    // Rough estimate of local contrast as edge variance
+    const leftIntensity = (frameData[leftIdx] + frameData[leftIdx + 1] + frameData[leftIdx + 2]) / 3;
+    const rightIntensity = (frameData[rightIdx] + frameData[rightIdx + 1] + frameData[rightIdx + 2]) / 3;
+    
+    edgeVariance = Math.abs(leftIntensity - rightIntensity); // Simplified metric
+
+  } catch (e) {
+    console.error('Error extracting temporal features:', e);
+  }
+  
+  return { highlights, edgeVariance };
+}

@@ -1,7 +1,7 @@
 ---
 id: US-04-DEEP-003
 title: Temporal Consistency Analysis
-status: READY
+status: DONE
 type: feature
 ---
 # Description

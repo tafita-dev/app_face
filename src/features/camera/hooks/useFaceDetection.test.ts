@@ -20,6 +20,12 @@ jest.mock('../frame-processors/face-processor', () => ({
   trackFacialLandmarks: jest.fn(),
 }));
 
+jest.mock('../../verification/deepfake/hooks/useTemporalConsistency', () => ({
+  useTemporalConsistency: jest.fn(() => ({
+    analyzeFrame: jest.fn().mockReturnValue(1.0),
+  })),
+}));
+
 // Simple Mock react-native-reanimated
 jest.mock('react-native-reanimated', () => {
   return {
@@ -52,16 +58,18 @@ describe('useFaceDetection', () => {
     const { result } = renderHook(() => useFaceDetection());
     const frameProcessorCallback = (useFrameProcessor as jest.Mock).mock.calls[0][0];
 
-    const mockFrame = { width: 100, height: 100 } as any;
+    const mockFrame = { width: 100, height: 100, toArrayBuffer: () => new ArrayBuffer(0) } as any;
     mockTrackFacialLandmarks.mockReturnValue([
-      { bounds: { top: 0, left: 0, width: 10, height: 10 } },
-      { bounds: { top: 0, left: 0, width: 20, height: 20 } },
+      { bounds: { top: 0, left: 0, width: 10, height: 10 }, landmarks: {}, yawAngle: 0 },
+      { bounds: { top: 0, left: 0, width: 20, height: 20 }, landmarks: {}, yawAngle: 0 },
     ]);
 
     frameProcessorCallback(mockFrame);
 
     expect(result.current.face.value).toEqual({
       bounds: { top: 0, left: 0, width: 20, height: 20 },
+      landmarks: {},
+      yawAngle: 0,
     });
   });
 
@@ -69,7 +77,7 @@ describe('useFaceDetection', () => {
     const { result } = renderHook(() => useFaceDetection());
     const frameProcessorCallback = (useFrameProcessor as jest.Mock).mock.calls[0][0];
 
-    const mockFrame = { width: 1920, height: 1080 } as any;
+    const mockFrame = { width: 1920, height: 1080, toArrayBuffer: () => new ArrayBuffer(0) } as any;
     frameProcessorCallback(mockFrame);
 
     expect(result.current.frameDimensions.value).toEqual({ width: 1920, height: 1080 });
@@ -80,9 +88,9 @@ describe('useFaceDetection', () => {
     const { result } = renderHook(() => useFaceDetection());
     const frameProcessorCallback = (useFrameProcessor as jest.Mock).mock.calls[0][0];
 
-    const mockFrame = { width: 100, height: 100 } as any;
+    const mockFrame = { width: 100, height: 100, toArrayBuffer: () => new ArrayBuffer(0) } as any;
     mockTrackFacialLandmarks.mockReturnValue([
-      { bounds: { top: 40, left: 40, width: 20, height: 20 } }, // center is (50, 50)
+      { bounds: { top: 40, left: 40, width: 20, height: 20 }, landmarks: {}, yawAngle: 0 }, // center is (50, 50)
     ]);
 
     frameProcessorCallback(mockFrame);
@@ -95,9 +103,9 @@ describe('useFaceDetection', () => {
     const { result } = renderHook(() => useFaceDetection());
     const frameProcessorCallback = (useFrameProcessor as jest.Mock).mock.calls[0][0];
 
-    const mockFrame = { width: 100, height: 100 } as any;
+    const mockFrame = { width: 100, height: 100, toArrayBuffer: () => new ArrayBuffer(0) } as any;
     mockTrackFacialLandmarks.mockReturnValue([
-      { bounds: { top: 0, left: 0, width: 20, height: 20 } }, // center is (10, 10)
+      { bounds: { top: 0, left: 0, width: 20, height: 20 }, landmarks: {}, yawAngle: 0 }, // center is (10, 10)
     ]);
 
     frameProcessorCallback(mockFrame);
@@ -110,7 +118,7 @@ describe('useFaceDetection', () => {
     const { result } = renderHook(() => useFaceDetection());
     const frameProcessorCallback = (useFrameProcessor as jest.Mock).mock.calls[0][0];
 
-    const mockFrame = { width: 100, height: 100 } as any;
+    const mockFrame = { width: 100, height: 100, toArrayBuffer: () => new ArrayBuffer(0) } as any;
     mockTrackFacialLandmarks.mockReturnValue(null);
 
     frameProcessorCallback(mockFrame);
@@ -129,7 +137,11 @@ describe('useFaceDetection', () => {
       height: 100,
       toArrayBuffer: jest.fn(() => new ArrayBuffer(100 * 100 * 4)),
     } as any;
-    mockTrackFacialLandmarks.mockReturnValue([{ bounds: { top: 0, left: 0, width: 20, height: 20 } }]);
+    mockTrackFacialLandmarks.mockReturnValue([{ 
+      bounds: { top: 0, left: 0, width: 20, height: 20 },
+      landmarks: { leftEye: { x: 5, y: 5 }, rightEye: { x: 15, y: 5 } },
+      yawAngle: 0
+    }]);
 
     // Run for 9 frames
     for (let i = 0; i < 9; i++) {
@@ -140,6 +152,7 @@ describe('useFaceDetection', () => {
     // 10th frame
     frameProcessorCallback(mockFrame);
     expect(mockModel.run).toHaveBeenCalled();
-    expect(result.current.face.value.deepfakeScore).toBe(0.85);
+    // (0.85 + (1 - 1.0)) / 2 = 0.425
+    expect(result.current.face.value.deepfakeScore).toBe(0.425);
   });
 });
