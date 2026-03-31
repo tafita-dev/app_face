@@ -75,7 +75,15 @@ interface IFaceDetection {
 }
 ```
 
-## 5. Directory Structure
+## 5. Adaptive Security Engine
+The system implements a "Dynamic Security Thresholding" (DST) mechanism:
+*   **Automatic Thresholding:** The similarity threshold (default 0.85) is dynamically adjusted (+/- 0.05) based on:
+    *   **Ambient Light Level:** If lighting is sub-optimal (< 100 lux), the threshold is increased to mitigate false positives from noisy images.
+    *   **Deepfake Confidence:** If a "potential artifact" is detected (score 0.5-0.9), the system automatically triggers an additional active liveness challenge (e.g., "Turn head left").
+    *   **Device Health:** Detection of root/jailbreak or screen recording activities results in a strict "High-Security Mode" (Threshold 0.95).
+*   **Challenge Orchestrator:** Randomly selects active liveness tasks to prevent replay attacks using pre-recorded videos.
+
+## 6. Directory Structure
 ```text
 src/
 ├── api/             # API clients and data fetching
@@ -87,6 +95,7 @@ src/
 │   │   ├── components/      # Camera-specific UI (FaceGuide, etc.)
 │   │   ├── frame-processors/# JSI worklets for ML processing
 │   │   └── hooks/           # useCamera, useFaceDetection
+│   ├── security/    # Adaptive security and runtime protection logic
 │   └── verification/# Liveness and Anti-Deepfake logic
 ├── hooks/           # Custom React hooks (useAppState, usePermissions)
 ├── navigation/      # React Navigation setup
@@ -96,13 +105,13 @@ src/
 └── utils/           # Helper functions
 ```
 
-## 3. Naming Conventions
+## 7. Naming Conventions
 *   **Files:** `kebab-case.ts` for utilities, `PascalCase.tsx` for components.
 *   **Variables/Functions:** `camelCase`.
 *   **Constants:** `UPPER_SNAKE_CASE`.
 *   **Interfaces/Types:** `PascalCase`, prefixed with `I` (optional, but consistent).
 
-## 4. Coding Standards & Best Practices
+## 8. Coding Standards & Best Practices
 *   **Clean Code:** Follow SOLID principles. Keep components under 200 lines.
 *   **Type Safety:** Strict TypeScript configuration. Avoid `any`.
 *   **Performance:** Use `useCallback` and `useMemo` strategically. Minimize bridge traffic; use JSI for heavy lifting.

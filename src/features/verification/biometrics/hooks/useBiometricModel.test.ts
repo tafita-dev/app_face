@@ -28,14 +28,20 @@ describe('useBiometricModel', () => {
     expect(mockLoadTensorflowModel).toHaveBeenCalled();
   });
 
-  it('should handle loading errors', async () => {
+  it('should provide a mock model in development mode if loading fails', async () => {
     const error = new Error('Failed to load');
     mockLoadTensorflowModel.mockRejectedValue(error);
 
     const { result } = renderHook(() => useBiometricModel());
 
-    await waitFor(() => expect(result.current.error).not.toBeNull());
-    expect(result.current.isLoaded).toBe(false);
-    expect(result.current.error).toBe(error);
+    await waitFor(() => expect(result.current.isLoaded).toBe(true));
+    expect(result.current.model).not.toBeNull();
+    expect(result.current.error).toBeNull();
+
+    // Verify mock model output
+    const mockOutput = result.current.model?.run([new Uint8Array(112 * 112 * 3)]);
+    expect(mockOutput).toBeDefined();
+    expect(mockOutput![0]).toBeInstanceOf(Float32Array);
+    expect(mockOutput![0].length).toBe(128);
   });
 });

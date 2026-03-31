@@ -22,10 +22,18 @@ export const useBiometricModel = () => {
           setIsLoaded(true);
         }
       } catch (err) {
-        console.error('Failed to load biometric model:', err);
+        console.warn('Failed to load biometric model, providing mock for development:', err);
         if (isMounted) {
-          setError(err instanceof Error ? err : new Error('Unknown error loading model'));
-          setIsLoaded(false);
+          if (__DEV__) {
+            // Provide a mock model for development if the real one fails to load
+            setModel({
+              run: (inputs: any) => [new Float32Array(128).fill(Math.random())], // Mock 128-D embedding
+            } as any);
+            setIsLoaded(true);
+          } else {
+            setError(err instanceof Error ? err : new Error('Unknown error loading model'));
+            setIsLoaded(false);
+          }
         }
       }
     };

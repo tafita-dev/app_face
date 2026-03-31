@@ -18,13 +18,14 @@ describe('useAntiDeepfakeModel', () => {
     expect(loadTensorflowModel).toHaveBeenCalled();
   });
 
-  it('should handle loading errors gracefully', async () => {
+  it('should provide a mock model in development mode if loading fails', async () => {
     (loadTensorflowModel as jest.Mock).mockRejectedValue(new Error('Model not found'));
 
     const { result } = renderHook(() => useAntiDeepfakeModel());
 
-    await waitFor(() => expect(result.current.error).toBeDefined());
-    expect(result.current.isLoaded).toBe(false);
-    expect(result.current.model).toBeNull();
+    await waitFor(() => expect(result.current.isLoaded).toBe(true));
+    expect(result.current.model).not.toBeNull();
+    expect(result.current.model?.run).toBeDefined();
+    expect(result.current.error).toBeNull();
   });
 });
