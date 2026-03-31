@@ -1,16 +1,33 @@
 import { store } from './index';
-import { setInitialized } from './app-slice';
+import { setInitialized, setVerificationResult, resetVerification } from './app-slice';
 import { appReducer } from './app-slice';
 
 describe('Redux Store', () => {
   it('should have initial state', () => {
     const state = store.getState();
     expect(state.app.isInitialized).toBe(false);
+    expect(state.app.verificationStatus).toBe('IDLE');
+    expect(state.app.deepfakeScore).toBe(0);
   });
 
   it('should update state when action is dispatched', () => {
     store.dispatch(setInitialized(true));
-    const state = store.getState();
+    let state = store.getState();
     expect(state.app.isInitialized).toBe(true);
+
+    store.dispatch(setVerificationResult({ status: 'SUCCESS', deepfakeScore: 0.1 }));
+    state = store.getState();
+    expect(state.app.verificationStatus).toBe('SUCCESS');
+    expect(state.app.deepfakeScore).toBe(0.1);
+
+    store.dispatch(setVerificationResult({ status: 'SECURITY_RISK', deepfakeScore: 0.85 }));
+    state = store.getState();
+    expect(state.app.verificationStatus).toBe('SECURITY_RISK');
+    expect(state.app.deepfakeScore).toBe(0.85);
+
+    store.dispatch(resetVerification());
+    state = store.getState();
+    expect(state.app.verificationStatus).toBe('IDLE');
+    expect(state.app.deepfakeScore).toBe(0);
   });
 });

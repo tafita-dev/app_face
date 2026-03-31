@@ -1,7 +1,7 @@
 ---
 id: US-04-DEEP-004
 title: Deepfake Score Integration
-status: READY
+status: DONE
 type: feature
 ---
 # Description

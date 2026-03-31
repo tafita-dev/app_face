@@ -1,5 +1,9 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
+import { useSelector } from 'react-redux';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../navigation/root-navigator';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -12,13 +16,22 @@ import {
   useLivenessMachine,
   LivenessState,
 } from '../verification/liveness/useLivenessMachine';
+import { RootState } from '../../store';
 
 export const ScanScreen: React.FC = () => {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const verificationStatus = useSelector((state: RootState) => state.app.verificationStatus);
   const faceValue = useSharedValue<any>(null);
   const frameDimensionsValue = useSharedValue({ width: 0, height: 0 });
   const validPositionValue = useSharedValue(false);
 
   const { state, progress } = useLivenessMachine(validPositionValue, faceValue);
+
+  useEffect(() => {
+    if (verificationStatus === 'SECURITY_RISK') {
+      navigation.replace('SecurityAlert');
+    }
+  }, [verificationStatus, navigation]);
 
   const onFaceDetection = useCallback(
     (face: any, dimensions: any, validPosition: any) => {

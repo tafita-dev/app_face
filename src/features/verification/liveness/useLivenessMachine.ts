@@ -1,4 +1,5 @@
 import { useReducer, useEffect, useCallback, useRef } from 'react';
+import { useDispatch } from 'react-redux';
 import {
   useAnimatedReaction,
   runOnJS,
@@ -14,6 +15,8 @@ import {
   SMOOTHING_WINDOW_SIZE 
 } from './movement-detection';
 import { analyzeTexture, FrameAnalysisData } from './passive-liveness';
+import { setVerificationResult } from '../../../store/app-slice';
+import { DeepfakeService } from '../deepfake/DeepfakeService';
 
 export enum LivenessState {
   INITIALIZING = 'INITIALIZING',
@@ -96,6 +99,7 @@ export const useLivenessMachine = (
   validPosition: ReadonlySharedValue<boolean>,
   face: ReadonlySharedValue<IFaceDetection | null>,
 ) => {
+  const dispatchAction = useDispatch();
   const [state, dispatch] = useReducer(livenessReducer, initialState);
   const stabilityTimerRef = useRef<NodeJS.Timeout | null>(null);
   const challengeTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -113,13 +117,6 @@ export const useLivenessMachine = (
     return () => clearTimeout(timer);
   }, []);
 
-  useEffect(() => {
-    return () => {
-      clearStabilityTimer();
-      clearChallengeTimer();
-    };
-  }, [clearStabilityTimer, clearChallengeTimer]);
-
   const clearStabilityTimer = useCallback(() => {
     if (stabilityTimerRef.current) {
       clearTimeout(stabilityTimerRef.current);
@@ -134,12 +131,20 @@ export const useLivenessMachine = (
     }
   }, []);
 
+  useEffect(() => {
+    return () => {
+      clearStabilityTimer();
+      clearChallengeTimer();
+    };
+  }, [clearStabilityTimer, clearChallengeTimer]);
+
   const startChallengeTimeout = useCallback(() => {
     clearChallengeTimer();
     challengeTimerRef.current = setTimeout(() => {
       dispatch({ type: 'FAIL' });
+      dispatchAction(setVerificationResult({ status: 'FAILURE' }));
     }, CHALLENGE_TIMEOUT_MS);
-  }, [clearChallengeTimer]);
+  }, [clearChallengeTimer, dispatchAction]);
 
   const resetChallengeStates = useCallback(() => {
     blinkStateRef.current = { hasClosed: false, lastTimestamp: 0 };
@@ -183,6 +188,7 @@ export const useLivenessMachine = (
         const pitchInconsistent = checkTemporalInconsistency(previousFace.pitchAngle, currentFace.pitchAngle);
         if (yawInconsistent || pitchInconsistent) {
           dispatch({ type: 'FAIL' });
+          dispatchAction(setVerificationResult({ status: 'SECURITY_RISK' }));
           return;
         }
       }
@@ -231,8 +237,19 @@ export const useLivenessMachine = (
         }
       }
 
-      // Passive Texture Analysis
+      // Passive Texture Analysis & Deepfake check
       if (state.state === LivenessState.ANALYZING) {
+        // Deepfake block logic
+        if (currentFace.deepfakeScore !== undefined && DeepfakeService.isSecurityRisk(currentFace.deepfakeScore)) {
+          dispatch({ type: 'FAIL' });
+          dispatchAction(setVerificationResult({ 
+            status: 'SECURITY_RISK', 
+            deepfakeScore: currentFace.deepfakeScore 
+          }));
+          clearChallengeTimer();
+          return;
+        }
+
         if (currentFace.textureAnalysis) {
           keyframesAnalysisRef.current.push(currentFace.textureAnalysis);
 
@@ -246,17 +263,25 @@ export const useLivenessMachine = (
 
             if (averageScore > 0.8) {
               dispatch({ type: 'COMPLETE' });
+              dispatchAction(setVerificationResult({ 
+                status: 'SUCCESS',
+                deepfakeScore: currentFace.deepfakeScore
+              }));
               clearChallengeTimer();
             } else {
               // Any score below 0.8 is considered a failure for high security
               dispatch({ type: 'FAIL' });
+              dispatchAction(setVerificationResult({ 
+                status: 'FAILURE',
+                deepfakeScore: currentFace.deepfakeScore
+              }));
               clearChallengeTimer();
             }
           }
         }
       }
     },
-    [state.state, startChallengeTimeout, clearChallengeTimer],
+    [state.state, startChallengeTimeout, clearChallengeTimer, dispatchAction],
   );
 
   useAnimatedReaction(
@@ -282,11 +307,13 @@ export const useLivenessMachine = (
 
   const fail = useCallback(() => {
     dispatch({ type: 'FAIL' });
-  }, []);
+    dispatchAction(setVerificationResult({ status: 'FAILURE' }));
+  }, [dispatchAction]);
 
   const complete = useCallback(() => {
     dispatch({ type: 'COMPLETE' });
-  }, []);
+    dispatchAction(setVerificationResult({ status: 'SUCCESS' }));
+  }, [dispatchAction]);
 
   const progress = (() => {
     switch (state.state) {

@@ -5,6 +5,7 @@ import { IFaceDetection } from '../frame-processors/types';
 import { TensorflowModel } from 'react-native-fast-tflite';
 import { cropFace, extractTemporalFeatures } from '../frame-processors/image-utils';
 import { useTemporalConsistency } from '../../verification/deepfake/hooks/useTemporalConsistency';
+import { DeepfakeService } from '../../verification/deepfake/DeepfakeService';
 
 export const useFaceDetection = (antiDeepfakeModel?: TensorflowModel | null) => {
   const face = useSharedValue<IFaceDetection | null>(null);
@@ -84,12 +85,13 @@ export const useFaceDetection = (antiDeepfakeModel?: TensorflowModel | null) => 
             const results = antiDeepfakeModel.run([croppedFace]);
             
             if (results && results.length > 0) {
-              let score = results[0][0] as number;
+              const ganScore = results[0][0] as number;
 
-              // Correlate with Temporal Score: temporalScore is consistency (0-1)
-              // We want to INCREASE the deepfake probability if consistency is LOW.
-              // So deepfakeScore = (score + (1 - temporalScore)) / 2
-              score = (score + (1 - temporalScore)) / 2;
+              // Use DeepfakeService for weighted aggregation
+              const score = DeepfakeService.calculateScore({
+                ganScore,
+                temporalConsistency: temporalScore,
+              });
 
               largestFace.deepfakeScore = score;
               if (largestFace.textureAnalysis == null) {

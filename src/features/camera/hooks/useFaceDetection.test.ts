@@ -152,7 +152,7 @@ describe('useFaceDetection', () => {
     // 10th frame
     frameProcessorCallback(mockFrame);
     expect(mockModel.run).toHaveBeenCalled();
-    // (0.85 + (1 - 1.0)) / 2 = 0.425
-    expect(result.current.face.value.deepfakeScore).toBe(0.425);
+    // (0.85 * 0.7) + (1 - 1.0) * 0.3 = 0.595
+    expect(result.current.face.value.deepfakeScore).toBeCloseTo(0.595);
   });
 });

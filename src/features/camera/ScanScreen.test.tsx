@@ -8,6 +8,17 @@ jest.mock('./CameraView', () => ({
   CameraView: () => null,
 }));
 
+jest.mock('react-redux', () => ({
+  useSelector: jest.fn(fn => fn({ app: { verificationStatus: 'IDLE' } })),
+  useDispatch: () => jest.fn(),
+}));
+
+jest.mock('@react-navigation/native', () => ({
+  useNavigation: () => ({
+    replace: jest.fn(),
+  }),
+}));
+
 describe('ScanScreen', () => {
   it('displays the progress bar and fills it proportionally', () => {
     (useLivenessMachine as jest.Mock).mockReturnValue({
@@ -18,9 +29,6 @@ describe('ScanScreen', () => {
     const { getByTestId } = render(<ScanScreen />);
     
     const progressBar = getByTestId('progress-bar-fill');
-    // Assuming we use an animated style or some way to verify the width/progress
-    // Since it's animated-reanimated, testing it might be tricky.
-    // Let's check for the existence first.
     expect(progressBar).toBeTruthy();
   });
 
