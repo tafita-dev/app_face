@@ -7,7 +7,10 @@ import { cropFace, extractTemporalFeatures } from '../frame-processors/image-uti
 import { useTemporalConsistency } from '../../verification/deepfake/hooks/useTemporalConsistency';
 import { DeepfakeService } from '../../verification/deepfake/DeepfakeService';
 
-export const useFaceDetection = (antiDeepfakeModel?: TensorflowModel | null) => {
+export const useFaceDetection = (
+  antiDeepfakeModel?: TensorflowModel | null,
+  biometricModel?: TensorflowModel | null,
+) => {
   const face = useSharedValue<IFaceDetection | null>(null);
   const frameDimensions = useSharedValue({ width: 0, height: 0 });
   const frameCount = useSharedValue(0);
@@ -114,12 +117,45 @@ export const useFaceDetection = (antiDeepfakeModel?: TensorflowModel | null) => 
           largestFace.textureAnalysis = face.value.textureAnalysis;
         }
 
+        // Run biometric embedding extraction every 20 frames if the model is available
+        if (biometricModel != null && frameCount.value % 20 === 0) {
+          try {
+            // MobileFaceNet usually expects 112x112 input
+            const croppedFace = cropFace(frame, largestFace.bounds, 112);
+            
+            const results = biometricModel.run([croppedFace]);
+            
+            if (results && results.length > 0) {
+              const rawEmbedding = results[0] as unknown as Float32Array;
+              
+              // L2 Normalization in worklet
+              let sum = 0;
+              for (let i = 0; i < rawEmbedding.length; i++) {
+                sum += rawEmbedding[i] * rawEmbedding[i];
+              }
+              const magnitude = Math.sqrt(sum);
+              if (magnitude > 0) {
+                const normalizedEmbedding = new Float32Array(rawEmbedding.length);
+                for (let i = 0; i < rawEmbedding.length; i++) {
+                  normalizedEmbedding[i] = rawEmbedding[i] / magnitude;
+                }
+                largestFace.embedding = normalizedEmbedding;
+              }
+            }
+          } catch (e) {
+            console.error('Biometric extraction error:', e);
+          }
+        } else if (face.value) {
+          // Carry over previous embedding
+          largestFace.embedding = face.value.embedding;
+        }
+
         face.value = largestFace;
       } else {
         face.value = null;
       }
     },
-    [antiDeepfakeModel, analyzeFrame],
+    [antiDeepfakeModel, biometricModel, analyzeFrame],
   );
 
   return { face, validPosition, frameProcessor, frameDimensions };

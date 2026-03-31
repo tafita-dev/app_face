@@ -11,6 +11,8 @@
 | **Frame Processing** | `src/features/camera/frame-processors/face-processor.ts` | `src/features/camera/frame-processors/index.ts` |
 | **Liveness Logic** | `src/features/verification/liveness/` | `src/features/verification/liveness/useLivenessMachine.ts` |
 | **Deepfake Analysis** | `src/features/verification/deepfake/` | `src/features/verification/deepfake/index.ts` |
+| **Biometric Enrollment** | `src/features/verification/biometrics/` | `src/features/verification/biometrics/enrollment-service.ts` |
+| **Biometric Matching** | `src/features/verification/biometrics/` | `src/features/verification/biometrics/matching-service.ts` |
 | **Verification Logic** | `src/features/verification/` | `src/features/verification/verification-service.ts` |
 | **ML Models & Assets** | `src/assets/models/` | `src/assets/index.ts` |
 | **State Management** | `src/store/` | `src/store/index.ts` |

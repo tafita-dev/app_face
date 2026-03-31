@@ -93,6 +93,32 @@ jest.mock('react-native-safe-area-context', () => {
   };
 });
 
+// Mock react-native-fast-tflite
+jest.mock('react-native-fast-tflite', () => ({
+  loadTensorflowModel: jest.fn().mockResolvedValue({
+    run: jest.fn().mockResolvedValue([[0.1]]),
+    inputs: [{ name: 'input', type: 'float32', shape: [1, 224, 224, 3] }],
+    outputs: [{ name: 'output', type: 'float32', shape: [1, 1] }],
+  }),
+}));
+
+// Mock react-native-keychain
+jest.mock('react-native-keychain', () => ({
+  setGenericPassword: jest.fn(),
+  getGenericPassword: jest.fn(),
+  resetGenericPassword: jest.fn(),
+  ACCESS_CONTROL: {
+    BIOMETRY_CURRENT_SET: 'BIOMETRY_CURRENT_SET',
+    BIOMETRY_ANY: 'BIOMETRY_ANY',
+  },
+  ACCESSIBLE: {
+    WHEN_PASSCODE_SET_THIS_DEVICE_ONLY: 'WHEN_PASSCODE_SET_THIS_DEVICE_ONLY',
+  },
+  AUTHENTICATION_TYPE: {
+    BIOMETRICS: 'BIOMETRICS',
+  },
+}));
+
 // Mock the whole @react-navigation/native-stack to avoid internal context issues in tests
 jest.mock('@react-navigation/native-stack', () => {
   return {

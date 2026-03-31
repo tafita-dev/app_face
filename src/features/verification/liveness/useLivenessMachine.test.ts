@@ -1,9 +1,20 @@
 import { renderHook, act } from '@testing-library/react-native';
 import { useLivenessMachine, LivenessState } from './useLivenessMachine';
+import { verifyIdentity } from '../verification-service';
 
 const mockDispatchAction = jest.fn();
 jest.mock('react-redux', () => ({
   useDispatch: () => mockDispatchAction,
+}));
+
+jest.mock('../verification-service', () => ({
+  verifyIdentity: jest.fn(),
+}));
+
+jest.mock('react-native', () => ({
+  Vibration: {
+    vibrate: jest.fn(),
+  },
 }));
 
 // Improve mock to handle useAnimatedReaction properly
@@ -198,7 +209,13 @@ describe('useLivenessMachine', () => {
     expect(result.current.state).toBe(LivenessState.ANALYZING);
   });
 
-  it('completes successfully if passive texture analysis is high', () => {
+  it('completes successfully if passive texture analysis is high', async () => {
+    (verifyIdentity as jest.Mock).mockResolvedValue({
+      status: 'SUCCESS',
+      message: 'Verification Success',
+      similarity: 0.95,
+    });
+
     const { result } = setupToBlinkChallenge();
     
     act(() => {
@@ -209,8 +226,8 @@ describe('useLivenessMachine', () => {
     });
     expect(result.current.state).toBe(LivenessState.ANALYZING);
 
-    // Provide 5 high-quality frames (real face)
-    for (let i = 0; i < 5; i++) {
+    // Provide 4 high-quality frames
+    for (let i = 0; i < 4; i++) {
       act(() => {
         if (faceCallback) {
           faceCallback(
@@ -226,9 +243,25 @@ describe('useLivenessMachine', () => {
       });
     }
 
+    // Fifth frame triggers verifyIdentity
+    await act(async () => {
+      if (faceCallback) {
+        faceCallback(
+          {
+            yawAngle: 0,
+            pitchAngle: 0,
+            textureAnalysis: { variance: 15, moireDetected: false },
+            deepfakeScore: 0.1,
+            embedding: new Float32Array(128).fill(0.1),
+          },
+          null,
+        );
+      }
+    });
+
     expect(result.current.state).toBe(LivenessState.SUCCESS);
     expect(mockDispatchAction).toHaveBeenCalledWith(expect.objectContaining({
-      payload: { status: 'SUCCESS', deepfakeScore: 0.1 }
+      payload: expect.objectContaining({ status: 'SUCCESS', deepfakeScore: 0.1 })
     }));
   });
 

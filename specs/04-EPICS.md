@@ -32,7 +32,12 @@
 ## Epic 5: Biometric Enrollment & Verification
 
 - **Goal:** Implement embedding extraction and secure local matching.
-- **Status:** BACKLOG
+- **Sub-goals:**
+    - Integrate `MobileFaceNet` TFLite model for embedding extraction.
+    - Implement `BiometricService` for Cosine Similarity matching.
+    - Develop `EnrollmentService` to securely save embeddings using `react-native-keychain`.
+    - Integrate enrollment/verification flows into the Liveness State Machine.
+- **Status:** WIP
 - **Ref:** @specs/01-PRD.md#feature-secure-biometric-matching
 
 ## Epic 6: Security & Hardening

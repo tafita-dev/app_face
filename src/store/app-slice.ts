@@ -6,12 +6,16 @@ interface AppState {
   isInitialized: boolean;
   deepfakeScore: number;
   verificationStatus: VerificationStatus;
+  verificationMessage: string;
+  biometricSimilarity: number;
 }
 
 const initialState: AppState = {
   isInitialized: false,
   deepfakeScore: 0,
   verificationStatus: 'IDLE',
+  verificationMessage: '',
+  biometricSimilarity: 0,
 };
 
 const appSlice = createSlice({
@@ -21,15 +25,29 @@ const appSlice = createSlice({
     setInitialized: (state, action: PayloadAction<boolean>) => {
       state.isInitialized = action.payload;
     },
-    setVerificationResult: (state, action: PayloadAction<{ status: VerificationStatus; deepfakeScore?: number }>) => {
+    setVerificationResult: (
+      state,
+      action: PayloadAction<{
+        status: VerificationStatus;
+        message?: string;
+        deepfakeScore?: number;
+        biometricSimilarity?: number;
+      }>,
+    ) => {
       state.verificationStatus = action.payload.status;
+      state.verificationMessage = action.payload.message || '';
       if (action.payload.deepfakeScore !== undefined) {
         state.deepfakeScore = action.payload.deepfakeScore;
       }
+      if (action.payload.biometricSimilarity !== undefined) {
+        state.biometricSimilarity = action.payload.biometricSimilarity;
+      }
     },
-    resetVerification: (state) => {
+    resetVerification: state => {
       state.verificationStatus = 'IDLE';
       state.deepfakeScore = 0;
+      state.verificationMessage = '';
+      state.biometricSimilarity = 0;
     },
   },
 });

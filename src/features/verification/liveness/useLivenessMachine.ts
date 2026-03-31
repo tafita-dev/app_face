@@ -1,5 +1,6 @@
 import { useReducer, useEffect, useCallback, useRef } from 'react';
 import { useDispatch } from 'react-redux';
+import { Vibration } from 'react-native';
 import {
   useAnimatedReaction,
   runOnJS,
@@ -17,6 +18,7 @@ import {
 import { analyzeTexture, FrameAnalysisData } from './passive-liveness';
 import { setVerificationResult } from '../../../store/app-slice';
 import { DeepfakeService } from '../deepfake/DeepfakeService';
+import { verifyIdentity } from '../verification-service';
 
 export enum LivenessState {
   INITIALIZING = 'INITIALIZING',
@@ -262,19 +264,50 @@ export const useLivenessMachine = (
             const averageScore = results.reduce((acc, curr) => acc + curr.livenessScore, 0) / REQUIRED_KEYFRAMES;
 
             if (averageScore > 0.8) {
-              dispatch({ type: 'COMPLETE' });
-              dispatchAction(setVerificationResult({ 
-                status: 'SUCCESS',
-                deepfakeScore: currentFace.deepfakeScore
-              }));
-              clearChallengeTimer();
+              // Liveness & Deepfake check passed, now verify biometrics
+              if (currentFace.embedding) {
+                // Biometric Verification
+                runOnJS(async (embedding: Float32Array, deepfakeScore?: number) => {
+                  const result = await verifyIdentity(embedding);
+                  if (result.status === 'SUCCESS') {
+                    dispatch({ type: 'COMPLETE' });
+                    Vibration.vibrate(100);
+                    dispatchAction(
+                      setVerificationResult({
+                        status: 'SUCCESS',
+                        message: result.message,
+                        deepfakeScore: deepfakeScore,
+                        biometricSimilarity: result.similarity,
+                      }),
+                    );
+                  } else {
+                    dispatch({ type: 'FAIL' });
+                    Vibration.vibrate([0, 200, 100, 200]);
+                    dispatchAction(
+                      setVerificationResult({
+                        status: 'FAILURE',
+                        message: result.message,
+                        deepfakeScore: deepfakeScore,
+                        biometricSimilarity: result.similarity,
+                      }),
+                    );
+                  }
+                })(currentFace.embedding, currentFace.deepfakeScore);
+                clearChallengeTimer();
+              } else {
+                // Embedding not available yet, wait for next frame
+              }
             } else {
               // Any score below 0.8 is considered a failure for high security
               dispatch({ type: 'FAIL' });
-              dispatchAction(setVerificationResult({ 
-                status: 'FAILURE',
-                deepfakeScore: currentFace.deepfakeScore
-              }));
+              Vibration.vibrate([0, 200, 100, 200]);
+              dispatchAction(
+                setVerificationResult({
+                  status: 'FAILURE',
+                  message: 'Liveness Check Failed',
+                  deepfakeScore: currentFace.deepfakeScore,
+                }),
+              );
               clearChallengeTimer();
             }
           }
@@ -307,11 +340,13 @@ export const useLivenessMachine = (
 
   const fail = useCallback(() => {
     dispatch({ type: 'FAIL' });
+    Vibration.vibrate([0, 200, 100, 200]);
     dispatchAction(setVerificationResult({ status: 'FAILURE' }));
   }, [dispatchAction]);
 
   const complete = useCallback(() => {
     dispatch({ type: 'COMPLETE' });
+    Vibration.vibrate(100);
     dispatchAction(setVerificationResult({ status: 'SUCCESS' }));
   }, [dispatchAction]);
 

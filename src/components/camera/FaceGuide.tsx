@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Canvas, Rect, Circle, Oval } from '@shopify/react-native-skia';
+import { Canvas, Rect, Circle, Oval, Group, vec } from '@shopify/react-native-skia';
 import { StyleSheet, View, useWindowDimensions, Text } from 'react-native';
 import { SharedValue, useDerivedValue, runOnJS, useSharedValue, withRepeat, withTiming, withSequence, useAnimatedReaction } from 'react-native-reanimated';
 
@@ -31,7 +31,7 @@ export const FaceGuide: React.FC<FaceGuideProps> = ({
   const [points, setPoints] = useState<{ x: number; y: number }[]>([]);
   const [text, setText] = useState('');
 
-  // Pulse effect for ANALYZING
+  // Pulse effect for ANALYZING and FAILURE
   useEffect(() => {
     if (livenessState === LivenessState.ANALYZING) {
       pulse.value = withRepeat(
@@ -40,6 +40,22 @@ export const FaceGuide: React.FC<FaceGuideProps> = ({
           withTiming(1, { duration: 500 })
         ),
         -1,
+        true
+      );
+    } else if (livenessState === LivenessState.SUCCESS) {
+      // Pop for success
+      pulse.value = withSequence(
+        withTiming(1.1, { duration: 150 }),
+        withTiming(1, { duration: 150 })
+      );
+    } else if (livenessState === LivenessState.FAILURE) {
+      // Fast, urgent pulse for rejection
+      pulse.value = withRepeat(
+        withSequence(
+          withTiming(1.2, { duration: 200 }),
+          withTiming(0.8, { duration: 200 })
+        ),
+        3, // Pulse a few times then stop or keep depending on UI flow
         true
       );
     } else {
@@ -51,7 +67,17 @@ export const FaceGuide: React.FC<FaceGuideProps> = ({
     if (livenessState === LivenessState.ANALYZING) {
       return pulse.value;
     }
+    if (livenessState === LivenessState.FAILURE) {
+      return 1; // Full opacity for red pulse
+    }
     return 0.3;
+  });
+
+  const animatedScale = useDerivedValue(() => {
+    if (livenessState === LivenessState.FAILURE) {
+      return pulse.value;
+    }
+    return 1;
   });
 
   // 🟢 Guide color logic
@@ -132,29 +158,34 @@ export const FaceGuide: React.FC<FaceGuideProps> = ({
   return (
     <View style={StyleSheet.absoluteFill} testID={testID} pointerEvents="none">
       <Canvas style={StyleSheet.absoluteFill}>
-        {/* 🟢 Guide ovale */}
-        <Oval
-          rect={{
-            x: screenWidth * 0.1,
-            y: screenHeight * 0.2,
-            width: screenWidth * 0.8,
-            height: screenHeight * 0.5,
-          }}
-          style="stroke"
-          strokeWidth={2}
-          color={guideColor}
-          opacity={animatedOpacity}
-        />
-
-        {/* 🟩 Bounding Box */}
-        {rect.width > 0 && (
-          <Rect
-            rect={rect}
+        <Group
+          origin={vec(screenWidth * 0.5, screenHeight * 0.45)}
+          transform={useDerivedValue(() => [{ scale: animatedScale.value }])}
+        >
+          {/* 🟢 Guide ovale */}
+          <Oval
+            rect={{
+              x: screenWidth * 0.1,
+              y: screenHeight * 0.2,
+              width: screenWidth * 0.8,
+              height: screenHeight * 0.5,
+            }}
             style="stroke"
             strokeWidth={2}
             color={guideColor}
+            opacity={animatedOpacity}
           />
-        )}
+
+          {/* 🟩 Bounding Box */}
+          {rect.width > 0 && (
+            <Rect
+              rect={rect}
+              style="stroke"
+              strokeWidth={2}
+              color={guideColor}
+            />
+          )}
+        </Group>
 
         {/* 🟡 Landmarks */}
         {points.map((point, index) => (

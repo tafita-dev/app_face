@@ -31,4 +31,5 @@ export interface IFaceDetection {
     highFrequencyScore: number;
     frequencyArtifacts?: number;
   };
+  embedding?: Float32Array;
 }

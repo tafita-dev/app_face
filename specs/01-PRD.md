@@ -19,9 +19,12 @@
 *   **Rule 4:** Provide a "Deepfake Confidence Score" (0.0 to 1.0) for each verified session.
 
 ### Feature: Secure Biometric Matching
-*   **Rule 1:** Convert face images into non-reversible mathematical embeddings.
-*   **Rule 2:** Compare live embeddings with stored templates using a configurable similarity threshold.
-*   **Rule 3:** Never store the actual face image.
+*   **Rule 1:** Convert face images into non-reversible mathematical embeddings using a specialized TFLite model (e.g., FaceNet or MobileFaceNet).
+*   **Rule 2:** Compare live embeddings with stored templates using Cosine Similarity or Euclidean distance with a configurable similarity threshold.
+*   **Rule 3:** Never store the actual face image or raw pixel data.
+*   **Rule 4:** Enrollment must only succeed if the Liveness and Deepfake confidence scores exceed 0.9.
+*   **Rule 5:** Verification must return a "Match" status only if the similarity score is above the security threshold (default 0.85).
+*   **Rule 6:** Stored embeddings must be encrypted with a device-specific key from the Secure Enclave/TEE.
 
 ## 2. Data Dictionary
 *   **Biometric Embedding:** A high-dimensional vector representing unique facial features.

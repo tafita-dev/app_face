@@ -5,22 +5,30 @@ import { useIsFocused } from '@react-navigation/native';
 import { useFaceDetection } from './hooks/useFaceDetection';
 import { FaceGuide } from '../../components/camera/FaceGuide';
 import { LivenessState } from '../verification/liveness/useLivenessMachine';
+import { TensorflowModel } from 'react-native-fast-tflite';
 
 interface CameraViewProps {
   livenessState: LivenessState;
   onFaceDetection: (face: any, dimensions: any, validPosition: any) => void;
+  antiDeepfakeModel?: TensorflowModel | null;
+  biometricModel?: TensorflowModel | null;
 }
 
 export const CameraView: React.FC<CameraViewProps> = ({ 
   livenessState,
-  onFaceDetection 
+  onFaceDetection,
+  antiDeepfakeModel,
+  biometricModel
 }) => {
   const device = useCameraDevice('front');
   const isFocused = useIsFocused();
   const [appState, setAppState] = useState<AppStateStatus>(
     AppState.currentState,
   );
-  const { frameProcessor, face, frameDimensions, validPosition } = useFaceDetection();
+  const { frameProcessor, face, frameDimensions, validPosition } = useFaceDetection(
+    antiDeepfakeModel,
+    biometricModel
+  );
 
   useEffect(() => {
     onFaceDetection(face, frameDimensions, validPosition);

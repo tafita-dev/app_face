@@ -17,7 +17,10 @@
         *   **Active Liveness:** Uses landmark temporal analysis (blink, mouth opening, head rotation) via Reanimated Shared Values.
         *   **Passive Liveness:** Uses ML models (TFLite) to analyze texture and Moire patterns.
         *   **Anti-Deepfake Engine:** Uses `react-native-fast-tflite` to run frequency-domain analysis and temporal consistency checks.
+    *   **Biometric Embedding Engine:** Uses a dedicated TFLite model (e.g., MobileFaceNet) to generate 128-D or 512-D vectors from aligned face crops.
+    *   **Template Matching Engine:** Performs high-speed vector similarity calculations (Cosine Similarity) on the JS thread or via a specialized worklet.
     *   **JSI Modules:** Custom native frame processors bridge Vision Camera's `Frame` objects to MLKit and TFLite without bridge serialization.
+    *   **Secure Biometric Storage:** Uses `react-native-keychain` with biometric-locked hardware security (FaceID/TouchID/Fingerprint) to store and retrieve encrypted embeddings.
     *   **Feedback Loop:** Detection results (landmarks, liveness scores) are passed back to the JS thread via Reanimated Shared Values for zero-lag UI updates (Skia overlays).
 
 ## 3. Liveness State Machine

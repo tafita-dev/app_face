@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/root-navigator';
@@ -17,21 +17,41 @@ import {
   LivenessState,
 } from '../verification/liveness/useLivenessMachine';
 import { RootState } from '../../store';
+import { useAntiDeepfakeModel } from '../verification/deepfake/hooks/useAntiDeepfakeModel';
+import { useBiometricModel } from '../verification/biometrics/hooks/useBiometricModel';
+import { resetVerification } from '../../store/app-slice';
 
 export const ScanScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const verificationStatus = useSelector((state: RootState) => state.app.verificationStatus);
+  const dispatch = useDispatch();
+  const { verificationStatus, verificationMessage } = useSelector(
+    (state: RootState) => state.app,
+  );
   const faceValue = useSharedValue<any>(null);
   const frameDimensionsValue = useSharedValue({ width: 0, height: 0 });
   const validPositionValue = useSharedValue(false);
+
+  const { model: antiDeepfakeModel } = useAntiDeepfakeModel();
+  const { model: biometricModel } = useBiometricModel();
 
   const { state, progress } = useLivenessMachine(validPositionValue, faceValue);
 
   useEffect(() => {
     if (verificationStatus === 'SECURITY_RISK') {
       navigation.replace('SecurityAlert');
+    } else if (verificationStatus === 'SUCCESS') {
+      const timer = setTimeout(() => {
+        navigation.navigate('Welcome');
+      }, 2000);
+      return () => clearTimeout(timer);
     }
   }, [verificationStatus, navigation]);
+
+  useEffect(() => {
+    return () => {
+      dispatch(resetVerification());
+    };
+  }, [dispatch]);
 
   const onFaceDetection = useCallback(
     (face: any, dimensions: any, validPosition: any) => {
@@ -52,9 +72,30 @@ export const ScanScreen: React.FC = () => {
     };
   });
 
+  const getStatusLabel = () => {
+    if (verificationStatus === 'FAILURE' && verificationMessage) {
+      return verificationMessage;
+    }
+    if (state === LivenessState.ANALYZING) {
+      return 'Analysing Security...';
+    }
+    if (state === LivenessState.SUCCESS) {
+      return 'Identity Verified';
+    }
+    if (state === LivenessState.FAILURE) {
+      return 'Verification Failed';
+    }
+    return 'Scanning...';
+  };
+
   return (
     <View style={styles.container}>
-      <CameraView livenessState={state} onFaceDetection={onFaceDetection} />
+      <CameraView 
+        livenessState={state} 
+        onFaceDetection={onFaceDetection}
+        antiDeepfakeModel={antiDeepfakeModel}
+        biometricModel={biometricModel}
+      />
 
       {/* Progress Bar */}
       <View style={styles.progressContainer}>
@@ -66,11 +107,7 @@ export const ScanScreen: React.FC = () => {
 
       {/* Status Label */}
       <View style={styles.header}>
-        <Text style={styles.statusLabel}>
-          {state === LivenessState.ANALYZING
-            ? 'Analysing Security...'
-            : 'Scanning...'}
-        </Text>
+        <Text style={styles.statusLabel}>{getStatusLabel()}</Text>
       </View>
 
       {/* Security Badge */}
