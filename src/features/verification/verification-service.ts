@@ -1,12 +1,14 @@
 import { keychainService } from '../../services/security/keychain-service';
 import { compareEmbeddings } from './biometrics/matching-service';
+import { lockoutService } from '../security/lockout-service';
 
-export type VerificationStatus = 'SUCCESS' | 'FAILURE' | 'ERROR';
+export type VerificationStatus = 'SUCCESS' | 'FAILURE' | 'ERROR' | 'LOCKOUT';
 
 export interface IVerificationResult {
   status: VerificationStatus;
   message: string;
   similarity?: number;
+  lockoutRemainingTime?: number;
 }
 
 const DEFAULT_VERIFICATION_THRESHOLD = 0.85;
@@ -22,16 +24,29 @@ export async function verifyIdentity(
   threshold: number = DEFAULT_VERIFICATION_THRESHOLD
 ): Promise<IVerificationResult> {
   try {
-    const storedTemplate = await keychainService.getBiometricTemplate();
+    if (await lockoutService.isLockedOut()) {
+      const remaining = await lockoutService.getRemainingLockoutTime();
+      return {
+        status: 'LOCKOUT',
+        message: `Account locked. Try again in ${Math.ceil(remaining / 60000)} minutes.`,
+        lockoutRemainingTime: remaining,
+      };
+    }
 
-    if (!storedTemplate) {
+    const storedEmbedding = await keychainService.getBiometricTemplate();
+
+    if (!storedEmbedding) {
       return { status: 'ERROR', message: 'No enrollment found' };
     }
 
-    const storedEmbedding = new Float32Array(storedTemplate);
-    const matchResult = compareEmbeddings(liveEmbedding, storedEmbedding, threshold);
+    const matchResult = compareEmbeddings(
+      liveEmbedding,
+      storedEmbedding,
+      threshold
+    );
 
     if (matchResult.isMatch) {
+      await lockoutService.recordSuccess();
       return {
         status: 'SUCCESS',
         message: 'Verification Success',
@@ -39,6 +54,7 @@ export async function verifyIdentity(
       };
     }
 
+    await lockoutService.recordFailure();
     return {
       status: 'FAILURE',
       message: 'Face Not Recognized',

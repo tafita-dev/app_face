@@ -1,5 +1,11 @@
 import { store } from './index';
-import { setInitialized, setVerificationResult, resetVerification } from './app-slice';
+import { 
+  setInitialized, 
+  setVerificationResult, 
+  resetVerification, 
+  setDeviceStatus,
+  setSecurityContext 
+} from './app-slice';
 import { appReducer } from './app-slice';
 
 describe('Redux Store', () => {
@@ -8,6 +14,8 @@ describe('Redux Store', () => {
     expect(state.app.isInitialized).toBe(false);
     expect(state.app.verificationStatus).toBe('IDLE');
     expect(state.app.deepfakeScore).toBe(0);
+    expect(state.app.deviceStatus).toBe('UNKNOWN');
+    expect(state.app.securityContext).toBe('NORMAL');
   });
 
   it('should update state when action is dispatched', () => {
@@ -24,6 +32,14 @@ describe('Redux Store', () => {
     state = store.getState();
     expect(state.app.verificationStatus).toBe('SECURITY_RISK');
     expect(state.app.deepfakeScore).toBe(0.85);
+
+    store.dispatch(setDeviceStatus('SAFE'));
+    state = store.getState();
+    expect(state.app.deviceStatus).toBe('SAFE');
+
+    store.dispatch(setSecurityContext('HIGH_RISK'));
+    state = store.getState();
+    expect(state.app.securityContext).toBe('HIGH_RISK');
 
     store.dispatch(resetVerification());
     state = store.getState();

@@ -107,3 +107,44 @@ export function extractTemporalFeatures(
   
   return { highlights, edgeVariance };
 }
+
+/**
+ * Estimates ambient light level by sampling pixel intensities.
+ * Returns the average intensity and a low-light flag.
+ */
+export function estimateAmbientLight(frame: Frame): { averageIntensity: number; isLowLight: boolean } {
+  'worklet';
+  
+  const LOW_LIGHT_THRESHOLD = 40;
+  let totalIntensity = 0;
+  let sampleCount = 0;
+  
+  try {
+    const frameBuffer = frame.toArrayBuffer();
+    const frameData = new Uint8Array(frameBuffer);
+    const frameWidth = frame.width;
+    const frameHeight = frame.height;
+    
+    // Sample pixels for performance (every 10th pixel in both dimensions)
+    const step = 10;
+    
+    for (let y = 0; y < frameHeight; y += step) {
+      for (let x = 0; x < frameWidth; x += step) {
+        const idx = (y * frameWidth + x) * 4;
+        // Average of RGB channels
+        const intensity = (frameData[idx] + frameData[idx + 1] + frameData[idx + 2]) / 3;
+        totalIntensity += intensity;
+        sampleCount++;
+      }
+    }
+  } catch (e) {
+    console.error('Error estimating ambient light:', e);
+  }
+  
+  const averageIntensity = sampleCount > 0 ? totalIntensity / sampleCount : 0;
+  
+  return {
+    averageIntensity,
+    isLowLight: averageIntensity < LOW_LIGHT_THRESHOLD
+  };
+}

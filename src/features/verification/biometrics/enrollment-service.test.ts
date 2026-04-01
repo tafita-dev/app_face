@@ -28,7 +28,7 @@ describe('EnrollmentService', () => {
 
     expect(result.success).toBe(true);
     expect(extractEmbedding).toHaveBeenCalledWith(mockModel, mockFaceImage);
-    expect(keychainService.saveBiometricTemplate).toHaveBeenCalledWith(Array.from(mockEmbedding));
+    expect(keychainService.saveBiometricTemplate).toHaveBeenCalledWith(mockEmbedding);
   });
 
   it('should fail enrollment if liveness score is below 0.9', async () => {

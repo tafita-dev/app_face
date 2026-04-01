@@ -1,16 +1,25 @@
 import * as Keychain from 'react-native-keychain';
+import {
+  obfuscateEmbedding,
+  deobfuscateEmbedding,
+} from '../../features/security';
 
 const BIOMETRIC_TEMPLATE_KEY = 'biometric_template';
 
 class KeychainService {
   /**
    * Saves a biometric template (embedding) securely in the Keychain.
-   * @param embedding The mathematical embedding of the face.
+   * Obfuscates the data before storage.
+   * @param embedding The mathematical embedding of the face (Float32Array).
    * @returns A boolean indicating if the operation was successful.
    */
-  async saveBiometricTemplate(embedding: number[]): Promise<boolean> {
+  async saveBiometricTemplate(embedding: Float32Array): Promise<boolean> {
     try {
-      const embeddingString = JSON.stringify(embedding);
+      const obfuscated = obfuscateEmbedding(embedding);
+      // Convert to array for JSON serialization
+      const dataToSave = Array.from(obfuscated);
+      const embeddingString = JSON.stringify(dataToSave);
+      
       const result = await Keychain.setGenericPassword(
         BIOMETRIC_TEMPLATE_KEY,
         embeddingString,
@@ -29,10 +38,10 @@ class KeychainService {
 
   /**
    * Retrieves the biometric template from the Keychain.
-   * Requires biometric authentication.
-   * @returns The embedding as a number array, or null if not found or unauthorized.
+   * Requires biometric authentication and performs de-obfuscation.
+   * @returns The embedding as a Float32Array, or null if not found or unauthorized.
    */
-  async getBiometricTemplate(): Promise<number[] | null> {
+  async getBiometricTemplate(): Promise<Float32Array | null> {
     try {
       const credentials = await Keychain.getGenericPassword({
         authenticationPrompt: {
@@ -42,11 +51,16 @@ class KeychainService {
       });
 
       if (credentials) {
-        return JSON.parse(credentials.password);
+        const obfuscatedArray = JSON.parse(credentials.password) as number[];
+        const obfuscatedEmbedding = new Float32Array(obfuscatedArray);
+        return deobfuscateEmbedding(obfuscatedEmbedding);
       }
       return null;
     } catch (error) {
-      console.error('Error retrieving biometric template from keychain:', error);
+      console.error(
+        'Error retrieving biometric template from keychain:',
+        error
+      );
       return null;
     }
   }

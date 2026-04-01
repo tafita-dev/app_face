@@ -7,10 +7,16 @@ const CENTER_THRESHOLD = 0.2; // 20% offset from center
 
 export const useUserGuidance = (
   face: SharedValue<IFaceDetection | null>,
+  isLowLight: SharedValue<boolean>,
   frameDimensions: SharedValue<{ width: number; height: number }>,
   livenessState: LivenessState,
 ) => {
   const guidance = useDerivedValue(() => {
+    // Priority 0: Environmental conditions
+    if (isLowLight.value) {
+      return 'Low light - move to a brighter area';
+    }
+
     // Priority 1: Liveness Specific Instructions
     switch (livenessState) {
       case LivenessState.CHALLENGE_BLINK:

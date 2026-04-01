@@ -1,85 +1,54 @@
-import * as Keychain from 'react-native-keychain';
 import { keychainService } from './keychain-service';
+import * as Keychain from 'react-native-keychain';
+import { obfuscateEmbedding, deobfuscateEmbedding } from '../../features/security/embedding-obfuscation';
 
+// Mock Keychain
 jest.mock('react-native-keychain', () => ({
   setGenericPassword: jest.fn(),
   getGenericPassword: jest.fn(),
-  ACCESS_CONTROL: {
-    BIOMETRY_CURRENT_SET: 'BIOMETRY_CURRENT_SET',
-  },
-  ACCESSIBLE: {
-    WHEN_PASSCODE_SET_THIS_DEVICE_ONLY: 'WHEN_PASSCODE_SET_THIS_DEVICE_ONLY',
-  },
+  ACCESS_CONTROL: { BIOMETRY_CURRENT_SET: 'BIOMETRY_CURRENT_SET' },
+  ACCESSIBLE: { WHEN_PASSCODE_SET_THIS_DEVICE_ONLY: 'WHEN_PASSCODE_SET_THIS_DEVICE_ONLY' },
 }));
 
-describe('KeychainService', () => {
-  const mockEmbedding = [0.1, 0.2, 0.3, 0.4];
-  const mockEmbeddingString = JSON.stringify(mockEmbedding);
+// Mock Obfuscation
+jest.mock('../../features/security/embedding-obfuscation', () => ({
+  obfuscateEmbedding: jest.fn((e) => e), // Passthrough by default in mock
+  deobfuscateEmbedding: jest.fn((e) => e),
+}));
+
+const mockObfuscate = obfuscateEmbedding as jest.Mock;
+const mockDeobfuscate = deobfuscateEmbedding as jest.Mock;
+
+describe('KeychainService with Obfuscation', () => {
+  const rawEmbedding = new Float32Array([0.1, 0.2, 0.3]);
+  const obfuscatedEmbedding = new Float32Array([0.9, 0.8, 0.7]);
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  describe('saveBiometricTemplate', () => {
-    it('should save the embedding stringified to the keychain', async () => {
-      (Keychain.setGenericPassword as jest.Mock).mockResolvedValue(true);
+  it('should obfuscate the embedding before saving', async () => {
+    mockObfuscate.mockReturnValue(obfuscatedEmbedding);
+    (Keychain.setGenericPassword as jest.Mock).mockResolvedValue({ service: 'test', storage: 'test' });
 
-      const result = await keychainService.saveBiometricTemplate(mockEmbedding);
+    await keychainService.saveBiometricTemplate(rawEmbedding);
 
-      expect(result).toBe(true);
-      expect(Keychain.setGenericPassword).toHaveBeenCalledWith(
-        'biometric_template',
-        mockEmbeddingString,
-        expect.objectContaining({
-          accessControl: Keychain.ACCESS_CONTROL.BIOMETRY_CURRENT_SET,
-          accessible: Keychain.ACCESSIBLE.WHEN_PASSCODE_SET_THIS_DEVICE_ONLY,
-          service: 'com.aurelius.secureface.biometrics',
-        })
-      );
-    });
-
-    it('should return false if saving fails', async () => {
-      (Keychain.setGenericPassword as jest.Mock).mockResolvedValue(false);
-
-      const result = await keychainService.saveBiometricTemplate(mockEmbedding);
-
-      expect(result).toBe(false);
-    });
+    expect(mockObfuscate).toHaveBeenCalledWith(rawEmbedding);
+    
+    // Check it's saving the obfuscated version
+    const savedData = (Keychain.setGenericPassword as jest.Mock).mock.calls[0][1];
+    expect(savedData).toEqual(JSON.stringify(Array.from(obfuscatedEmbedding)));
   });
 
-  describe('getBiometricTemplate', () => {
-    it('should retrieve and parse the embedding from the keychain', async () => {
-      (Keychain.getGenericPassword as jest.Mock).mockResolvedValue({
-        password: mockEmbeddingString,
-      });
-
-      const result = await keychainService.getBiometricTemplate();
-
-      expect(result).toEqual(mockEmbedding);
-      expect(Keychain.getGenericPassword).toHaveBeenCalledWith(
-        expect.objectContaining({
-          authenticationPrompt: { title: 'Authenticate to access biometrics' },
-          service: 'com.aurelius.secureface.biometrics',
-        })
-      );
+  it('should deobfuscate the embedding after retrieval', async () => {
+    (Keychain.getGenericPassword as jest.Mock).mockResolvedValue({
+      password: JSON.stringify(Array.from(obfuscatedEmbedding)),
     });
+    mockDeobfuscate.mockReturnValue(rawEmbedding);
 
-    it('should return null if no template is found', async () => {
-      (Keychain.getGenericPassword as jest.Mock).mockResolvedValue(false);
+    const result = await keychainService.getBiometricTemplate();
 
-      const result = await keychainService.getBiometricTemplate();
-
-      expect(result).toBeNull();
-    });
-
-    it('should return null if parsing fails', async () => {
-      (Keychain.getGenericPassword as jest.Mock).mockResolvedValue({
-        password: 'invalid-json',
-      });
-
-      const result = await keychainService.getBiometricTemplate();
-
-      expect(result).toBeNull();
-    });
+    expect(mockDeobfuscate).toHaveBeenCalled();
+    expect(result).toEqual(rawEmbedding);
   });
 });

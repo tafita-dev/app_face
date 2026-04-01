@@ -280,6 +280,16 @@ export const useLivenessMachine = (
                         biometricSimilarity: result.similarity,
                       }),
                     );
+                  } else if (result.status === 'LOCKOUT') {
+                    dispatch({ type: 'FAIL' });
+                    Vibration.vibrate([0, 200, 100, 200]);
+                    dispatchAction(
+                      setVerificationResult({
+                        status: 'LOCKOUT',
+                        message: result.message,
+                        lockoutRemainingTime: result.lockoutRemainingTime,
+                      }),
+                    );
                   } else {
                     dispatch({ type: 'FAIL' });
                     Vibration.vibrate([0, 200, 100, 200]);

@@ -19,15 +19,17 @@ import {
 import { RootState } from '../../store';
 import { useAntiDeepfakeModel } from '../verification/deepfake/hooks/useAntiDeepfakeModel';
 import { useBiometricModel } from '../verification/biometrics/hooks/useBiometricModel';
-import { resetVerification } from '../../store/app-slice';
+import { resetVerification, setDeviceStatus, setVerificationResult, SecurityContext } from '../../store/app-slice';
+import { checkDeviceIntegrity, useScreenProtection, lockoutService, useAdaptiveSecurity } from '../security';
 
 export const ScanScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const dispatch = useDispatch();
-  const { verificationStatus, verificationMessage } = useSelector(
+  const { verificationStatus, verificationMessage, securityContext } = useSelector(
     (state: RootState) => state.app,
   );
   const faceValue = useSharedValue<any>(null);
+  const isLowLightValue = useSharedValue(false);
   const frameDimensionsValue = useSharedValue({ width: 0, height: 0 });
   const validPositionValue = useSharedValue(false);
 
@@ -35,9 +37,48 @@ export const ScanScreen: React.FC = () => {
   const { model: biometricModel } = useBiometricModel();
 
   const { state, progress } = useLivenessMachine(validPositionValue, faceValue);
+  const { isRecording } = useAdaptiveSecurity();
 
   useEffect(() => {
-    if (verificationStatus === 'SECURITY_RISK') {
+    if (securityContext === 'HIGH_RISK') {
+      dispatch(setVerificationResult({
+        status: 'SECURITY_RISK',
+        message: 'Security risk detected. Access restricted.'
+      }));
+    }
+  }, [securityContext, dispatch]);
+
+  useEffect(() => {
+    const checkLockout = async () => {
+      if (await lockoutService.isLockedOut()) {
+        const remaining = await lockoutService.getRemainingLockoutTime();
+        dispatch(
+          setVerificationResult({
+            status: 'LOCKOUT',
+            message: 'Too many failed attempts.',
+            lockoutRemainingTime: remaining,
+          }),
+        );
+      }
+    };
+    checkLockout();
+  }, [dispatch]);
+
+  useEffect(() => {
+    const status = checkDeviceIntegrity();
+    if (status === 'COMPROMISED') {
+      dispatch(setDeviceStatus('COMPROMISED'));
+      dispatch(setVerificationResult({
+        status: 'SECURITY_RISK',
+        message: 'Device Integrity Compromised. For your security, biometric authentication is disabled on rooted or jailbroken devices.'
+      }));
+    } else {
+      dispatch(setDeviceStatus('SAFE'));
+    }
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (verificationStatus === 'SECURITY_RISK' || verificationStatus === 'LOCKOUT') {
       navigation.replace('SecurityAlert');
     } else if (verificationStatus === 'SUCCESS') {
       const timer = setTimeout(() => {
@@ -54,12 +95,13 @@ export const ScanScreen: React.FC = () => {
   }, [dispatch]);
 
   const onFaceDetection = useCallback(
-    (face: any, dimensions: any, validPosition: any) => {
+    (face: any, dimensions: any, validPosition: any, isLowLight: any) => {
       faceValue.value = face.value;
+      isLowLightValue.value = isLowLight.value;
       frameDimensionsValue.value = dimensions.value;
       validPositionValue.value = validPosition.value;
     },
-    [faceValue, frameDimensionsValue, validPositionValue],
+    [faceValue, isLowLightValue, frameDimensionsValue, validPositionValue],
   );
 
   const animatedProgress = useDerivedValue(() => {
@@ -116,6 +158,34 @@ export const ScanScreen: React.FC = () => {
           🛡️ Securely processing on-device
         </Text>
       </View>
+
+      {/* Screen Recording Overlay */}
+      {isRecording && (
+        <View testID="recording-overlay" style={styles.recordingOverlay}>
+          <View style={styles.blurContainer} />
+          <View style={styles.warningContent}>
+            <Text style={styles.warningIcon}>⚠️</Text>
+            <Text style={styles.warningTitle}>Security Risk</Text>
+            <Text style={styles.warningText}>
+              Screen recording detected. Please stop it to continue
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {/* Unstable Environment Overlay */}
+      {securityContext === 'UNSTABLE' && (
+        <View testID="unstable-overlay" style={styles.recordingOverlay}>
+          <View style={styles.blurContainer} />
+          <View style={styles.warningContent}>
+            <Text style={styles.warningIcon}>🔋</Text>
+            <Text style={styles.warningTitle}>Unstable Environment</Text>
+            <Text style={styles.warningText}>
+              Low battery detected. Please plug in your device for reliable verification.
+            </Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 };
@@ -162,5 +232,41 @@ const styles = StyleSheet.create({
   securityBadge: {
     color: COLORS.TEXT_SECONDARY,
     fontSize: 12,
+  },
+  recordingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  blurContainer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: COLORS.BACKGROUND,
+    opacity: 0.9,
+  },
+  warningContent: {
+    padding: 30,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    marginHorizontal: 20,
+  },
+  warningIcon: {
+    fontSize: 40,
+    marginBottom: 10,
+  },
+  warningTitle: {
+    color: COLORS.WARNING,
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  warningText: {
+    color: COLORS.TEXT_PRIMARY,
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 22,
   },
 });

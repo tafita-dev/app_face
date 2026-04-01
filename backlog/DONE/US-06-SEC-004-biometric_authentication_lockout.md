@@ -1,7 +1,7 @@
 ---
 id: US-06-SEC-004
 title: Biometric Authentication Lockout
-status: READY
+status: DONE
 type: feature
 ---
 # Description

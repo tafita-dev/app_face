@@ -6,10 +6,11 @@ import { LivenessState } from '../../verification/liveness/useLivenessMachine';
 describe('useUserGuidance', () => {
   it('returns challenge instructions when in challenge state', () => {
     const face = makeMutable(null);
+    const isLowLight = makeMutable(false);
     const frameDimensions = makeMutable({ width: 100, height: 100 });
     
     const { result } = renderHook(() => 
-      useUserGuidance(face as any, frameDimensions as any, LivenessState.CHALLENGE_BLINK)
+      useUserGuidance(face as any, isLowLight, frameDimensions as any, LivenessState.CHALLENGE_BLINK)
     );
     
     expect(result.current.guidance.value).toBe('Blink your eyes');
@@ -23,18 +24,17 @@ describe('useUserGuidance', () => {
       pitchAngle: 0,
       yawAngle: 0,
     });
+    const isLowLight = makeMutable(false);
     const frameDimensions = makeMutable({ width: 100, height: 100 });
     
     const { result } = renderHook(() => 
-      useUserGuidance(face as any, frameDimensions as any, LivenessState.POSITIONING)
+      useUserGuidance(face as any, isLowLight, frameDimensions as any, LivenessState.POSITIONING)
     );
     
     expect(result.current.guidance.value).toBe('Move closer');
   });
 
   it('returns "Center your face" when face is more than 20% away from center', () => {
-    // Face width 40% (ok), but left is 0, so center is 20% (center of frame is 50%)
-    // Offset = |20 - 50| = 30% (threshold 20%)
     const face = makeMutable({
       bounds: { top: 0, left: 0, width: 40, height: 40 },
       landmarks: {},
@@ -42,18 +42,17 @@ describe('useUserGuidance', () => {
       pitchAngle: 0,
       yawAngle: 0,
     });
+    const isLowLight = makeMutable(false);
     const frameDimensions = makeMutable({ width: 100, height: 100 });
     
     const { result } = renderHook(() => 
-      useUserGuidance(face as any, frameDimensions as any, LivenessState.POSITIONING)
+      useUserGuidance(face as any, isLowLight, frameDimensions as any, LivenessState.POSITIONING)
     );
     
     expect(result.current.guidance.value).toBe('Center your face');
   });
 
   it('returns "Perfect, stay still" when face is centered and correct size', () => {
-    // Face width 40% (ok), left 30% -> center 50% (ok)
-    // Top 30% -> center 50% (ok)
     const face = makeMutable({
       bounds: { top: 30, left: 30, width: 40, height: 40 },
       landmarks: {},
@@ -61,10 +60,11 @@ describe('useUserGuidance', () => {
       pitchAngle: 0,
       yawAngle: 0,
     });
+    const isLowLight = makeMutable(false);
     const frameDimensions = makeMutable({ width: 100, height: 100 });
     
     const { result } = renderHook(() => 
-      useUserGuidance(face as any, frameDimensions as any, LivenessState.POSITIONING)
+      useUserGuidance(face as any, isLowLight, frameDimensions as any, LivenessState.POSITIONING)
     );
     
     expect(result.current.guidance.value).toBe('Perfect, stay still');
@@ -72,12 +72,25 @@ describe('useUserGuidance', () => {
 
   it('returns position prompt when no face is present in POSITIONING', () => {
     const face = makeMutable(null);
+    const isLowLight = makeMutable(false);
     const frameDimensions = makeMutable({ width: 100, height: 100 });
     
     const { result } = renderHook(() => 
-      useUserGuidance(face as any, frameDimensions as any, LivenessState.POSITIONING)
+      useUserGuidance(face as any, isLowLight, frameDimensions as any, LivenessState.POSITIONING)
     );
     
     expect(result.current.guidance.value).toBe('Position your face in the guide');
+  });
+
+  it('returns "Low light - move to a brighter area" when isLowLight is true', () => {
+    const face = makeMutable(null);
+    const isLowLight = makeMutable(true);
+    const frameDimensions = makeMutable({ width: 100, height: 100 });
+    
+    const { result } = renderHook(() => 
+      useUserGuidance(face as any, isLowLight, frameDimensions as any, LivenessState.POSITIONING)
+    );
+    
+    expect(result.current.guidance.value).toBe('Low light - move to a brighter area');
   });
 });

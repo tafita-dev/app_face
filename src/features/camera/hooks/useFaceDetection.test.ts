@@ -2,6 +2,8 @@ import { renderHook } from '@testing-library/react-native';
 import { useFaceDetection } from './useFaceDetection';
 import { useFrameProcessor } from 'react-native-vision-camera';
 import { trackFacialLandmarks } from '../frame-processors/face-processor';
+import { estimateAmbientLight } from '../frame-processors/image-utils';
+import { adaptiveSecurityService } from '../../security/adaptive-security-service';
 
 jest.mock('react-native-vision-camera', () => {
   const React = require('react');
@@ -20,10 +22,22 @@ jest.mock('../frame-processors/face-processor', () => ({
   trackFacialLandmarks: jest.fn(),
 }));
 
+jest.mock('../frame-processors/image-utils', () => ({
+  cropFace: jest.fn(),
+  extractTemporalFeatures: jest.fn(() => ({ highlights: 0, edgeVariance: 0 })),
+  estimateAmbientLight: jest.fn(() => ({ averageIntensity: 100, isLowLight: false })),
+}));
+
 jest.mock('../../verification/deepfake/hooks/useTemporalConsistency', () => ({
   useTemporalConsistency: jest.fn(() => ({
     analyzeFrame: jest.fn().mockReturnValue(1.0),
   })),
+}));
+
+jest.mock('../../security/adaptive-security-service', () => ({
+  adaptiveSecurityService: {
+    setIsLowLight: jest.fn(),
+  },
 }));
 
 // Simple Mock react-native-reanimated
@@ -70,6 +84,12 @@ describe('useFaceDetection', () => {
       bounds: { top: 0, left: 0, width: 20, height: 20 },
       landmarks: {},
       yawAngle: 0,
+      textureAnalysis: {
+        pixelVariation: 0,
+        moirePatternDetected: false,
+        highFrequencyScore: 0,
+        isLowLight: false,
+      },
     });
   });
 
@@ -124,6 +144,47 @@ describe('useFaceDetection', () => {
     frameProcessorCallback(mockFrame);
 
     expect(result.current.face.value).toBeNull();
+  });
+
+  it('should set isLowLight to true when estimateAmbientLight returns isLowLight: true', () => {
+    const mockTrackFacialLandmarks = trackFacialLandmarks as jest.Mock;
+    const mockEstimateAmbientLight = estimateAmbientLight as jest.Mock;
+    const { result } = renderHook(() => useFaceDetection());
+    const frameProcessorCallback = (useFrameProcessor as jest.Mock).mock.calls[0][0];
+
+    const mockFrame = { width: 100, height: 100, toArrayBuffer: () => new ArrayBuffer(0) } as any;
+    mockTrackFacialLandmarks.mockReturnValue([
+      { bounds: { top: 0, left: 0, width: 20, height: 20 }, landmarks: {}, yawAngle: 0 },
+    ]);
+    mockEstimateAmbientLight.mockReturnValue({ averageIntensity: 20, isLowLight: true });
+
+    frameProcessorCallback(mockFrame);
+
+    expect(result.current.face.value.textureAnalysis.isLowLight).toBe(true);
+    expect(result.current.isLowLight.value).toBe(true);
+  });
+
+  it('should call adaptiveSecurityService.setIsLowLight when isLowLight changes', () => {
+    const mockEstimateAmbientLight = estimateAmbientLight as jest.Mock;
+    renderHook(() => useFaceDetection());
+    const frameProcessorCallback = (useFrameProcessor as jest.Mock).mock.calls[0][0];
+
+    const mockFrame = { width: 100, height: 100, toArrayBuffer: () => new ArrayBuffer(0) } as any;
+    
+    // First frame: low light
+    mockEstimateAmbientLight.mockReturnValue({ averageIntensity: 20, isLowLight: true });
+    frameProcessorCallback(mockFrame);
+    expect(adaptiveSecurityService.setIsLowLight).toHaveBeenCalledWith(true);
+
+    // Second frame: still low light, should NOT call again
+    jest.clearAllMocks();
+    frameProcessorCallback(mockFrame);
+    expect(adaptiveSecurityService.setIsLowLight).not.toHaveBeenCalled();
+
+    // Third frame: optimal light, SHOULD call with false
+    mockEstimateAmbientLight.mockReturnValue({ averageIntensity: 100, isLowLight: false });
+    frameProcessorCallback(mockFrame);
+    expect(adaptiveSecurityService.setIsLowLight).toHaveBeenCalledWith(false);
   });
 
   it('should update deepfake score every 10 frames if model is provided', () => {

@@ -10,6 +10,7 @@ import { LivenessState } from '../../features/verification/liveness/useLivenessM
 
 interface FaceGuideProps {
   face: SharedValue<IFaceDetection | null>;
+  isLowLight: SharedValue<boolean>;
   frameDimensions: SharedValue<{ width: number; height: number }>;
   livenessState: LivenessState;
   testID?: string;
@@ -17,12 +18,13 @@ interface FaceGuideProps {
 
 export const FaceGuide: React.FC<FaceGuideProps> = ({
   face,
+  isLowLight,
   frameDimensions,
   livenessState,
   testID = 'face-guide',
 }) => {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
-  const { guidance } = useUserGuidance(face, frameDimensions, livenessState);
+  const { guidance } = useUserGuidance(face, isLowLight, frameDimensions, livenessState);
   
   const pulse = useSharedValue(1);
 

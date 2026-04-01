@@ -1,7 +1,7 @@
 ---
 id: US-06-SEC-003
 title: Biometric Embedding Obfuscation
-status: READY
+status: DONE
 type: feature
 ---
 # Description
@@ -15,15 +15,15 @@ As a security service, I want to obfuscate face embeddings before saving them so
 
 # Acceptance Criteria (DoD)
 
-- [ ] **Scenario 1:** Successful Obfuscation on Save
+- [x] **Scenario 1:** Successful Obfuscation on Save
     - Given a raw biometric embedding (Float32Array)
     - When `saveBiometricTemplate` is called
     - Then the data stored in the keychain should be transformed (not match the raw array).
-- [ ] **Scenario 2:** Successful De-obfuscation on Retrieval
+- [x] **Scenario 2:** Successful De-obfuscation on Retrieval
     - Given an obfuscated embedding in the keychain
     - When `getBiometricTemplate` is called
     - Then it should return the original Float32Array accurately.
-- [ ] **Scenario 3:** Salt/Key Consistency
+- [x] **Scenario 3:** Salt/Key Consistency
     - Given multiple save operations
     - When retrieving the data
     - Then the de-obfuscation must always yield the same result for the same input across sessions on the same device.

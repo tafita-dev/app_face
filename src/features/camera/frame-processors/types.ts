@@ -30,6 +30,7 @@ export interface IFaceDetection {
     moirePatternDetected: boolean;
     highFrequencyScore: number;
     frequencyArtifacts?: number;
+    isLowLight?: boolean;
   };
   embedding?: Float32Array;
 }

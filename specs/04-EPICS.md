@@ -32,7 +32,7 @@
     - Implement Screen Recording & Screenshot protection (using `react-native-screen-guard`).
     - Obfuscate mathematical embeddings before storage (additional encryption layer).
     - Implement biometric lockout (too many failed attempts).
-- **Status:** IN_PROGRESS
+- **Status:** DONE
 - **Ref:** @specs/03-ARCHITECTURE.md#8-coding-standards--best-practices
 
 ## Epic 7: Adaptive Verification & Runtime Security
@@ -42,5 +42,5 @@
     - Implement "Ambient Light Analysis" in the frame processor to estimate lux levels.
     - Implement "Challenge Orchestrator" for randomizing active liveness tasks.
     - Develop the "Dynamic Security Thresholding" (DST) logic to adjust Cosine Similarity thresholds.
-- **Status:** TODO
+- **Status:** IN_PROGRESS
 - **Ref:** @specs/03-ARCHITECTURE.md#5-adaptive-security-engine

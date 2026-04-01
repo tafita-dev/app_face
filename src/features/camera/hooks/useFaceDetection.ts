@@ -1,17 +1,20 @@
-import { useSharedValue, useDerivedValue } from 'react-native-reanimated';
+import { useSharedValue, useDerivedValue, runOnJS } from 'react-native-reanimated';
 import { useFrameProcessor } from 'react-native-vision-camera';
 import { trackFacialLandmarks } from '../frame-processors/face-processor';
 import { IFaceDetection } from '../frame-processors/types';
 import { TensorflowModel } from 'react-native-fast-tflite';
-import { cropFace, extractTemporalFeatures } from '../frame-processors/image-utils';
+import { cropFace, extractTemporalFeatures, estimateAmbientLight } from '../frame-processors/image-utils';
 import { useTemporalConsistency } from '../../verification/deepfake/hooks/useTemporalConsistency';
 import { DeepfakeService } from '../../verification/deepfake/DeepfakeService';
+import { adaptiveSecurityService } from '../../security/adaptive-security-service';
 
 export const useFaceDetection = (
   antiDeepfakeModel?: TensorflowModel | null,
   biometricModel?: TensorflowModel | null,
 ) => {
   const face = useSharedValue<IFaceDetection | null>(null);
+  const isLowLight = useSharedValue(false);
+  const previousIsLowLight = useSharedValue(false);
   const frameDimensions = useSharedValue({ width: 0, height: 0 });
   const frameCount = useSharedValue(0);
   const { analyzeFrame } = useTemporalConsistency();
@@ -39,11 +42,23 @@ export const useFaceDetection = (
     );
   });
 
+  const updateLowLightStatus = (val: boolean) => {
+    adaptiveSecurityService.setIsLowLight(val);
+  };
+
   const frameProcessor = useFrameProcessor(
     frame => {
       'worklet';
       frameDimensions.value = { width: frame.width, height: frame.height };
       frameCount.value += 1;
+
+      const { isLowLight: currentIsLowLight } = estimateAmbientLight(frame);
+      isLowLight.value = currentIsLowLight;
+
+      if (currentIsLowLight !== previousIsLowLight.value) {
+        previousIsLowLight.value = currentIsLowLight;
+        runOnJS(updateLowLightStatus)(currentIsLowLight);
+      }
 
       const detectedFaces = trackFacialLandmarks(frame);
       if (detectedFaces && detectedFaces.length > 0) {
@@ -57,6 +72,18 @@ export const useFaceDetection = (
           if (area > largestArea) {
             largestFace = detectedFaces[i];
           }
+        }
+
+        // Initialize textureAnalysis if not exists
+        if (largestFace.textureAnalysis == null) {
+          largestFace.textureAnalysis = {
+            pixelVariation: 0,
+            moirePatternDetected: false,
+            highFrequencyScore: 0,
+            isLowLight: currentIsLowLight,
+          };
+        } else {
+          largestFace.textureAnalysis.isLowLight = currentIsLowLight;
         }
 
         // Perform Temporal Consistency Analysis every frame
@@ -158,5 +185,5 @@ export const useFaceDetection = (
     [antiDeepfakeModel, biometricModel, analyzeFrame],
   );
 
-  return { face, validPosition, frameProcessor, frameDimensions };
+  return { face, isLowLight, validPosition, frameProcessor, frameDimensions };
 };

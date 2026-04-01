@@ -4,12 +4,18 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../navigation/root-navigator';
 import { COLORS } from '../../../theme';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { resetVerification } from '../../../store/app-slice';
+import { RootState } from '../../../store';
 
 export const SecurityAlertScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const dispatch = useDispatch();
+  const { verificationStatus, verificationMessage, lockoutRemainingTime } = useSelector(
+    (state: RootState) => state.app,
+  );
+
+  const isLockout = verificationStatus === 'LOCKOUT';
 
   const handleTryAgain = () => {
     dispatch(resetVerification());
@@ -21,23 +27,38 @@ export const SecurityAlertScreen: React.FC = () => {
     console.log('Contacting support...');
   };
 
+  const getRemainingMinutes = () => {
+    return Math.ceil(lockoutRemainingTime / 60000);
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.icon}>⚠️</Text>
-        <Text style={styles.heading}>Authentication Blocked</Text>
+        <Text style={styles.icon}>{isLockout ? '🔒' : '⚠️'}</Text>
+        <Text style={[styles.heading, isLockout && styles.lockoutHeading]}>
+          {isLockout ? 'Authentication Locked' : 'Authentication Blocked'}
+        </Text>
         <Text style={styles.description}>
-          A potential security risk (synthetic image or digital replay) was detected. 
-          For your safety, access is temporarily restricted.
+          {isLockout
+            ? `Too many failed attempts. For your security, access is temporarily restricted for ${getRemainingMinutes()} minutes.`
+            : verificationMessage || 'A potential security risk was detected. For your safety, access is temporarily restricted.'}
         </Text>
 
         <TouchableOpacity style={styles.primaryButton} onPress={handleContactSupport}>
           <Text style={styles.primaryButtonText}>Contact Support</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.secondaryButton} onPress={handleTryAgain}>
-          <Text style={styles.secondaryButtonText}>Try Again</Text>
-        </TouchableOpacity>
+        {!isLockout && (
+          <TouchableOpacity style={styles.secondaryButton} onPress={handleTryAgain}>
+            <Text style={styles.secondaryButtonText}>Try Again</Text>
+          </TouchableOpacity>
+        )}
+        
+        {isLockout && (
+           <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('Welcome')}>
+            <Text style={styles.secondaryButtonText}>Back to Home</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -63,6 +84,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 15,
     textAlign: 'center',
+  },
+  lockoutHeading: {
+    color: COLORS.ERROR,
   },
   description: {
     color: COLORS.TEXT_SECONDARY,

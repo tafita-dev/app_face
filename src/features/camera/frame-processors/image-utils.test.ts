@@ -1,4 +1,4 @@
-import { cropFace, extractTemporalFeatures } from './image-utils';
+import { cropFace, extractTemporalFeatures, estimateAmbientLight } from './image-utils';
 
 describe('image-utils', () => {
   describe('cropFace', () => {
@@ -38,6 +38,34 @@ describe('image-utils', () => {
 
       expect(result.highlights).toBe(128);
       expect(result.edgeVariance).toBe(0); // All gray, so no variance
+    });
+  });
+
+  describe('estimateAmbientLight', () => {
+    it('should return isLowLight: true if average intensity is below 40', () => {
+      const mockData = new Uint8Array(100 * 100 * 4).fill(30); // 30 < 40
+      const mockFrame = {
+        width: 100,
+        height: 100,
+        toArrayBuffer: jest.fn(() => mockData.buffer),
+      } as any;
+
+      const result = estimateAmbientLight(mockFrame);
+      expect(result.isLowLight).toBe(true);
+      expect(result.averageIntensity).toBeLessThan(40);
+    });
+
+    it('should return isLowLight: false if average intensity is above 40', () => {
+      const mockData = new Uint8Array(100 * 100 * 4).fill(100); // 100 > 40
+      const mockFrame = {
+        width: 100,
+        height: 100,
+        toArrayBuffer: jest.fn(() => mockData.buffer),
+      } as any;
+
+      const result = estimateAmbientLight(mockFrame);
+      expect(result.isLowLight).toBe(false);
+      expect(result.averageIntensity).toBeGreaterThan(40);
     });
   });
 });

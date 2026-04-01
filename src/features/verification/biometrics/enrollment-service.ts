@@ -41,7 +41,7 @@ export async function enrollUser(params: IEnrollmentParams): Promise<IEnrollment
     const embedding = await extractEmbedding(model, faceImage);
 
     // Persistence: Save to Secure Enclave / TEE via Keychain
-    const success = await keychainService.saveBiometricTemplate(Array.from(embedding));
+    const success = await keychainService.saveBiometricTemplate(embedding);
 
     if (!success) {
       return { success: false, error: 'Secure Storage Failed' };

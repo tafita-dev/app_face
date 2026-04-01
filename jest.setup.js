@@ -139,8 +139,15 @@ jest.mock('@shopify/react-native-skia', () => {
     Path: (props: any) => null,
     Group: ({ children }: any) => children,
     useCanvasRef: () => ({ current: null }),
+    vec: (x: number, y: number) => ({ x, y }),
   };
 });
+
+jest.mock('jail-monkey', () => ({
+  isJailBroken: jest.fn(() => false),
+  canMockLocation: jest.fn(() => false),
+  trustFall: jest.fn(() => true),
+}));
 
 // Mock react-native-vision-camera
 jest.mock('react-native-vision-camera', () => {
@@ -184,3 +191,13 @@ jest.mock('@react-navigation/native', () => {
     useIsFocused: jest.fn(() => true),
   };
 });
+
+jest.mock('react-native-screen-guard', () => ({
+  registerRecordingListener: jest.fn(),
+  registerScreenshotListener: jest.fn(),
+  unregister: jest.fn(),
+}), { virtual: true });
+
+jest.mock('react-native-device-info', () => ({
+  getUniqueIdSync: jest.fn(() => 'test-device-id'),
+}), { virtual: true });

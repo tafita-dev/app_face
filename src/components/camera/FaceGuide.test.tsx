@@ -11,16 +11,20 @@ jest.mock('@shopify/react-native-skia', () => {
     Rect: jest.fn(() => null),
     Circle: jest.fn(() => null),
     Oval: jest.fn(() => null),
+    Group: jest.fn(({ children }) => React.createElement('View', null, children)),
+    vec: jest.fn((x, y) => ({ x, y })),
   };
 });
 
 describe('FaceGuide', () => {
   it('renders correctly', () => {
     const face = makeMutable(null);
+    const isLowLight = makeMutable(false);
     const frameDimensions = makeMutable({ width: 0, height: 0 });
     const { getByTestId } = render(
       <FaceGuide 
         face={face} 
+        isLowLight={isLowLight}
         frameDimensions={frameDimensions} 
         livenessState={LivenessState.POSITIONING}
       />
@@ -35,18 +39,18 @@ describe('FaceGuide', () => {
       rollAngle: 0,
       pitchAngle: 0,
       yawAngle: 0,
-    });
+    } as any);
+    const isLowLight = makeMutable(false);
     const frameDimensions = makeMutable({ width: 100, height: 100 });
     const { getByTestId } = render(
       <FaceGuide 
         face={face} 
+        isLowLight={isLowLight}
         frameDimensions={frameDimensions} 
         livenessState={LivenessState.CHALLENGE_BLINK}
       />
     );
     
-    // In FaceGuide, we use a regular <Text> for guidance now, so we can find it by text or testID.
-    // The guidance for CHALLENGE_BLINK is "Blink your eyes".
     const guidanceText = getByTestId('guidance-text');
     expect(guidanceText).toBeTruthy();
     expect(guidanceText.props.children).toBe('Blink your eyes');
@@ -59,11 +63,13 @@ describe('FaceGuide', () => {
       rollAngle: 0,
       pitchAngle: 0,
       yawAngle: 0,
-    });
+    } as any);
+    const isLowLight = makeMutable(false);
     const frameDimensions = makeMutable({ width: 100, height: 100 });
     const { getByText } = render(
       <FaceGuide 
         face={face} 
+        isLowLight={isLowLight}
         frameDimensions={frameDimensions} 
         livenessState={LivenessState.CHALLENGE_BLINK}
       />
@@ -73,14 +79,31 @@ describe('FaceGuide', () => {
 
   it('displays "Try again" on failure', () => {
     const face = makeMutable(null);
+    const isLowLight = makeMutable(false);
     const frameDimensions = makeMutable({ width: 0, height: 0 });
     const { getByText } = render(
       <FaceGuide 
         face={face} 
+        isLowLight={isLowLight}
         frameDimensions={frameDimensions} 
         livenessState={LivenessState.FAILURE}
       />
     );
     expect(getByText('Try again')).toBeTruthy();
+  });
+
+  it('displays "Low light - move to a brighter area" when isLowLight is true', () => {
+    const face = makeMutable(null);
+    const isLowLight = makeMutable(true);
+    const frameDimensions = makeMutable({ width: 100, height: 100 });
+    const { getByText } = render(
+      <FaceGuide 
+        face={face} 
+        isLowLight={isLowLight}
+        frameDimensions={frameDimensions} 
+        livenessState={LivenessState.POSITIONING}
+      />
+    );
+    expect(getByText('Low light - move to a brighter area')).toBeTruthy();
   });
 });

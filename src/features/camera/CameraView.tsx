@@ -9,7 +9,7 @@ import { TensorflowModel } from 'react-native-fast-tflite';
 
 interface CameraViewProps {
   livenessState: LivenessState;
-  onFaceDetection: (face: any, dimensions: any, validPosition: any) => void;
+  onFaceDetection: (face: any, dimensions: any, validPosition: any, isLowLight: any) => void;
   antiDeepfakeModel?: TensorflowModel | null;
   biometricModel?: TensorflowModel | null;
 }
@@ -25,14 +25,14 @@ export const CameraView: React.FC<CameraViewProps> = ({
   const [appState, setAppState] = useState<AppStateStatus>(
     AppState.currentState,
   );
-  const { frameProcessor, face, frameDimensions, validPosition } = useFaceDetection(
+  const { frameProcessor, face, isLowLight, frameDimensions, validPosition } = useFaceDetection(
     antiDeepfakeModel,
     biometricModel
   );
 
   useEffect(() => {
-    onFaceDetection(face, frameDimensions, validPosition);
-  }, [face, frameDimensions, validPosition, onFaceDetection]);
+    onFaceDetection(face, frameDimensions, validPosition, isLowLight);
+  }, [face, frameDimensions, validPosition, isLowLight, onFaceDetection]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
@@ -62,6 +62,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
       />
       <FaceGuide 
         face={face} 
+        isLowLight={isLowLight}
         frameDimensions={frameDimensions} 
         livenessState={livenessState}
       />

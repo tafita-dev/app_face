@@ -15,6 +15,9 @@
 | **Biometric Matching** | `src/features/verification/biometrics/` | `src/features/verification/biometrics/matching-service.ts` |
 | **Verification Logic** | `src/features/verification/` | `src/features/verification/verification-service.ts` |
 | **Adaptive Security** | `src/features/security/` | `src/features/security/index.ts` |
+| **Device Integrity** | `src/features/security/` | `src/features/security/device-integrity.ts` |
+| **Screen Protection** | `src/features/security/hooks/` | `src/features/security/hooks/useScreenProtection.ts` |
+| **Embedding Obfuscation** | `src/features/security/` | `src/features/security/embedding-obfuscation.ts` |
 | **ML Models & Assets** | `src/assets/models/` | `src/assets/index.ts` |
 | **State Management** | `src/store/` | `src/store/index.ts` |
 | **Secure Storage** | `src/services/security/` | `src/services/security/keychain-service.ts` |
