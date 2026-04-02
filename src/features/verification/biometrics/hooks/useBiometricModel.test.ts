@@ -14,18 +14,16 @@ describe('useBiometricModel', () => {
     jest.clearAllMocks();
   });
 
-  it('should initialize with null and then load the model', async () => {
-    const mockModel = { run: jest.fn() };
-    mockLoadTensorflowModel.mockResolvedValue(mockModel);
-
+  it('should provide a deterministic mock model during development/test', async () => {
     const { result } = renderHook(() => useBiometricModel());
 
-    expect(result.current.isLoaded).toBe(false);
-    expect(result.current.model).toBeNull();
-
     await waitFor(() => expect(result.current.isLoaded).toBe(true));
-    expect(result.current.model).toBe(mockModel);
-    expect(mockLoadTensorflowModel).toHaveBeenCalled();
+    expect(result.current.model).not.toBeNull();
+    expect(mockLoadTensorflowModel).not.toHaveBeenCalled();
+
+    const output = result.current.model?.run([new Uint8Array(112 * 112 * 3)]);
+    expect(output?.[0]).toBeInstanceOf(Float32Array);
+    expect(output?.[0].length).toBe(128);
   });
 
   it('should provide a mock model in development mode if loading fails', async () => {

@@ -7,6 +7,10 @@ export type DeviceStatus = 'SAFE' | 'COMPROMISED' | 'UNKNOWN';
  * @returns 'SAFE' if the device is secure, 'COMPROMISED' otherwise.
  */
 export const checkDeviceIntegrity = (): DeviceStatus => {
+  if (__DEV__ && process.env.NODE_ENV !== 'test') {
+    return 'SAFE';
+  }
+
   const isJailBroken = JailMonkey.isJailBroken();
   const canMockLocation = JailMonkey.canMockLocation();
   const trustFall = JailMonkey.trustFall(); // hook for multiple checks
