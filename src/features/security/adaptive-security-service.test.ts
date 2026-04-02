@@ -54,4 +54,42 @@ describe('AdaptiveSecurityService', () => {
     const context = await adaptiveSecurityService.evaluateSecurityContext(false);
     expect(context).toBe('NORMAL');
   });
+
+  describe('getRequiredThreshold', () => {
+    it('should return 0.90 if security context is HIGH_RISK', async () => {
+      (checkDeviceIntegrity as jest.Mock).mockReturnValue('COMPROMISED');
+      adaptiveSecurityService.setIsLowLight(false);
+      
+      const threshold = await adaptiveSecurityService.getRequiredThreshold(false);
+      expect(threshold).toBe(0.90);
+    });
+
+    it('should return 0.90 if it is low light environment', async () => {
+      (checkDeviceIntegrity as jest.Mock).mockReturnValue('SAFE');
+      (DeviceInfo.getBatteryLevel as jest.Mock).mockResolvedValue(0.5);
+      adaptiveSecurityService.setIsLowLight(true);
+      
+      const threshold = await adaptiveSecurityService.getRequiredThreshold(false);
+      expect(threshold).toBe(0.90);
+    });
+
+    it('should return 0.85 if security context is NORMAL and it is not low light', async () => {
+      (checkDeviceIntegrity as jest.Mock).mockReturnValue('SAFE');
+      (DeviceInfo.getBatteryLevel as jest.Mock).mockResolvedValue(0.5);
+      adaptiveSecurityService.setIsLowLight(false);
+      
+      const threshold = await adaptiveSecurityService.getRequiredThreshold(false);
+      expect(threshold).toBe(0.85);
+    });
+
+    it('should return 0.85 if security context is UNSTABLE but it is not low light', async () => {
+      (checkDeviceIntegrity as jest.Mock).mockReturnValue('SAFE');
+      (DeviceInfo.getBatteryLevel as jest.Mock).mockResolvedValue(0.04);
+      (DeviceInfo.isBatteryCharging as jest.Mock).mockResolvedValue(false);
+      adaptiveSecurityService.setIsLowLight(false);
+      
+      const threshold = await adaptiveSecurityService.getRequiredThreshold(false);
+      expect(threshold).toBe(0.85);
+    });
+  });
 });

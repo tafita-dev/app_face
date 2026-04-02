@@ -1,11 +1,14 @@
-import { renderHook, act } from '@testing-library/react-native';
+import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { useScreenProtection } from './useScreenProtection';
-import ScreenGuard from 'react-native-screen-guard';
+import ScreenGuard from 'react-native-screenguard';
 
-jest.mock('react-native-screen-guard', () => ({
-  registerRecordingListener: jest.fn(),
-  registerScreenshotListener: jest.fn(),
+// Mock react-native-screenguard
+jest.mock('react-native-screenguard', () => ({
+  initSettings: jest.fn(),
+  register: jest.fn().mockResolvedValue(undefined),
   unregister: jest.fn(),
+  listenScreenshot: jest.fn(),
+  listenVideoRecording: jest.fn(),
 }), { virtual: true });
 
 describe('useScreenProtection', () => {
@@ -13,30 +16,42 @@ describe('useScreenProtection', () => {
     jest.clearAllMocks();
   });
 
-  it('should register listeners on mount and unregister on unmount', () => {
+  it('should register on mount, and unregister on unmount', async () => {
     const { unmount } = renderHook(() => useScreenProtection());
 
-    expect(ScreenGuard.registerRecordingListener).toHaveBeenCalled();
-    expect(ScreenGuard.registerScreenshotListener).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(ScreenGuard.register).toHaveBeenCalledWith(expect.objectContaining({
+        color: '#000000',
+        status: 'on',
+      }));
+    });
 
     unmount();
     expect(ScreenGuard.unregister).toHaveBeenCalled();
   });
 
-  it('should set isRecording to true when recording is detected', () => {
-    let recordingCallback: (data: any) => void = () => {};
-    (ScreenGuard.registerRecordingListener as jest.Mock).mockImplementation((cb) => {
+  it('should set isRecording to true when video recording is detected', async () => {
+    let recordingCallback: (res: any) => void = () => {};
+    (ScreenGuard.listenVideoRecording as jest.Mock).mockImplementation((cb) => {
       recordingCallback = cb;
     });
 
     const { result } = renderHook(() => useScreenProtection());
 
-    expect(result.current.isRecording).toBe(false);
+    await waitFor(() => {
+      expect(result.current.isRecording).toBe(false);
+    });
 
     act(() => {
-      recordingCallback({ isRecording: true });
+      recordingCallback(true);
     });
 
     expect(result.current.isRecording).toBe(true);
+
+    act(() => {
+      recordingCallback(false);
+    });
+
+    expect(result.current.isRecording).toBe(false);
   });
 });

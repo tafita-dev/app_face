@@ -17,7 +17,9 @@ export const useBiometricModel = () => {
 
     const loadModel = async () => {
       try {
-        const resolvedAsset = Image.resolveAssetSource(MODEL_PATH);
+        const resolvedAsset = Image.resolveAssetSource(
+          require('../../../../../src/assets/models/mobilefacenet.tflite'),
+        );
         const source =
           typeof MODEL_PATH === 'number'
             ? MODEL_PATH

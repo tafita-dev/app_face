@@ -42,5 +42,15 @@
     - Implement "Ambient Light Analysis" in the frame processor to estimate lux levels.
     - Implement "Challenge Orchestrator" for randomizing active liveness tasks.
     - Develop the "Dynamic Security Thresholding" (DST) logic to adjust Cosine Similarity thresholds.
-- **Status:** IN_PROGRESS
+- **Status:** DONE
 - **Ref:** @specs/03-ARCHITECTURE.md#5-adaptive-security-engine
+
+## Epic 8: End-to-End Testing & Production Readiness
+- **Goal:** Ensure the system is robust, performant, and ready for production deployment.
+- **Sub-goals:**
+    - Implement E2E tests for the full Enrollment and Authentication flows.
+    - Performance benchmarking (ensure < 2s verification time).
+    - Setup CI/CD pipeline for automated testing and builds.
+    - Implement centralized error logging (production-ready).
+- **Status:** TODO
+- **Ref:** @specs/01-PRD.md#3-non-functional-requirements

@@ -1,7 +1,7 @@
 ---
 id: US-07-ADAPT-003
 title: Active Challenge Randomization
-status: READY
+status: DONE
 type: feature
 ---
 # Description
@@ -15,15 +15,15 @@ As a liveness engine, I want to randomize the sequence of active challenges so t
 
 # Acceptance Criteria (DoD)
 
-- [ ] **Scenario 1: Randomized Sequence Generation**
+- [x] **Scenario 1: Randomized Sequence Generation**
     - Given a new liveness session starts
     - When the state machine initializes
     - Then it should generate a random sequence of at least 2 challenges (e.g., Blink -> Turn Left).
-- [ ] **Scenario 2: Prevention of Static Sequences**
+- [x] **Scenario 2: Prevention of Static Sequences**
     - Given multiple consecutive liveness sessions
     - When sequences are generated
     - Then the sequence should vary between sessions (not be the same 3 times in a row).
-- [ ] **Scenario 3: Adaptive Challenges**
+- [x] **Scenario 3: Adaptive Challenges**
     - Given the `deepfakeScore` is suspicious (0.5 to 0.8)
     - When the liveness check is in progress
     - Then the orchestrator should inject an additional "Head Rotation" challenge to increase confidence.

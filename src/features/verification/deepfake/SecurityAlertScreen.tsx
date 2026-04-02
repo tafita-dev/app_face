@@ -9,11 +9,11 @@ import { resetVerification } from '../../../store/app-slice';
 import { RootState } from '../../../store';
 
 export const SecurityAlertScreen: React.FC = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const dispatch = useDispatch();
-  const { verificationStatus, verificationMessage, lockoutRemainingTime } = useSelector(
-    (state: RootState) => state.app,
-  );
+  const { verificationStatus, verificationMessage, lockoutRemainingTime } =
+    useSelector((state: RootState) => state.app);
 
   const isLockout = verificationStatus === 'LOCKOUT';
 
@@ -41,21 +41,31 @@ export const SecurityAlertScreen: React.FC = () => {
         <Text style={styles.description}>
           {isLockout
             ? `Too many failed attempts. For your security, access is temporarily restricted for ${getRemainingMinutes()} minutes.`
-            : verificationMessage || 'A potential security risk was detected. For your safety, access is temporarily restricted.'}
+            : verificationMessage ||
+              'A potential security risk was detected. For your safety, access is temporarily restricted.'}
         </Text>
 
-        <TouchableOpacity style={styles.primaryButton} onPress={handleContactSupport}>
+        <TouchableOpacity
+          style={styles.primaryButton}
+          onPress={handleContactSupport}
+        >
           <Text style={styles.primaryButtonText}>Contact Support</Text>
         </TouchableOpacity>
 
         {!isLockout && (
-          <TouchableOpacity style={styles.secondaryButton} onPress={handleTryAgain}>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={handleTryAgain}
+          >
             <Text style={styles.secondaryButtonText}>Try Again</Text>
           </TouchableOpacity>
         )}
-        
+
         {isLockout && (
-           <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('Welcome')}>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => navigation.navigate('Welcome')}
+          >
             <Text style={styles.secondaryButtonText}>Back to Home</Text>
           </TouchableOpacity>
         )}
@@ -79,7 +89,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   heading: {
-    color: COLORS.WARNING,
+    color: COLORS.ERROR,
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 15,

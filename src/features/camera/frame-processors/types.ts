@@ -23,6 +23,7 @@ export interface IFaceDetection {
   rollAngle: number;
   pitchAngle: number;
   yawAngle: number;
+  smilingProbability?: number;
   livenessScore?: number;
   deepfakeScore?: number;
   textureAnalysis?: {

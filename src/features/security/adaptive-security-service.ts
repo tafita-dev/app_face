@@ -50,6 +50,25 @@ class AdaptiveSecurityService {
     // 3. Default to NORMAL
     return 'NORMAL';
   }
+
+  /**
+   * Calculates the required Cosine Similarity threshold based on the current
+   * security context and environmental factors.
+   * 
+   * @param isRecording Current screen recording state
+   * @returns The required similarity threshold (e.g., 0.85 or 0.90)
+   */
+  async getRequiredThreshold(isRecording: boolean): Promise<number> {
+    const context = await this.evaluateSecurityContext(isRecording);
+    
+    // Scenario 1: High Security Mode
+    if (context === 'HIGH_RISK' || this._isLowLight) {
+      return 0.90;
+    }
+
+    // Scenario 2: Normal Mode
+    return 0.85;
+  }
 }
 
 export const adaptiveSecurityService = new AdaptiveSecurityService();

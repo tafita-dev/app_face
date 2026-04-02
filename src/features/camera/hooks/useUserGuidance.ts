@@ -1,6 +1,6 @@
 import { useDerivedValue, SharedValue } from 'react-native-reanimated';
 import { IFaceDetection } from '../frame-processors/types';
-import { LivenessState } from '../../verification/liveness/useLivenessMachine';
+import { LivenessState } from '../../verification/liveness/types';
 
 const DISTANCE_THRESHOLD = 0.3; // 30% width
 const CENTER_THRESHOLD = 0.2; // 20% offset from center

@@ -15,37 +15,34 @@ import {
   MovementState, 
   SMOOTHING_WINDOW_SIZE 
 } from './movement-detection';
+import { detectSmile } from './smile-detection';
 import { analyzeTexture, FrameAnalysisData } from './passive-liveness';
 import { setVerificationResult } from '../../../store/app-slice';
 import { DeepfakeService } from '../deepfake/DeepfakeService';
 import { verifyIdentity } from '../verification-service';
 
-export enum LivenessState {
-  INITIALIZING = 'INITIALIZING',
-  POSITIONING = 'POSITIONING',
-  CHALLENGE_BLINK = 'CHALLENGE_BLINK',
-  CHALLENGE_SMILE = 'CHALLENGE_SMILE',
-  CHALLENGE_ROTATION = 'CHALLENGE_ROTATION',
-  CHALLENGE_PITCH = 'CHALLENGE_PITCH',
-  ANALYZING = 'ANALYZING',
-  SUCCESS = 'SUCCESS',
-  FAILURE = 'FAILURE',
-}
+import { ChallengeOrchestrator, ChallengeType } from './challenge-orchestrator';
+import { LivenessState } from './types';
 
 type Action =
   | { type: 'INITIALIZE_DONE' }
-  | { type: 'START_CHALLENGES' }
+  | { type: 'START_CHALLENGES'; sequence: ChallengeType[] }
   | { type: 'NEXT_CHALLENGE' }
+  | { type: 'ADAPT_SEQUENCE'; sequence: ChallengeType[] }
   | { type: 'RESET' }
   | { type: 'FAIL' }
   | { type: 'COMPLETE' };
 
 interface State {
   state: LivenessState;
+  sequence: ChallengeType[];
+  currentChallengeIndex: number;
 }
 
 const initialState: State = {
   state: LivenessState.INITIALIZING,
+  sequence: [],
+  currentChallengeIndex: -1,
 };
 
 const CHALLENGE_TIMEOUT_MS = 5000;
@@ -53,29 +50,44 @@ const CHALLENGE_TIMEOUT_MS = 5000;
 function livenessReducer(state: State, action: Action): State {
   switch (action.type) {
     case 'INITIALIZE_DONE':
-      return { state: LivenessState.POSITIONING };
+      return { ...state, state: LivenessState.POSITIONING };
     case 'START_CHALLENGES':
-      return { state: LivenessState.CHALLENGE_BLINK };
+      return {
+        ...state,
+        state: action.sequence[0],
+        sequence: action.sequence,
+        currentChallengeIndex: 0,
+      };
     case 'NEXT_CHALLENGE':
-      if (state.state === LivenessState.CHALLENGE_BLINK) {
-        return { state: LivenessState.CHALLENGE_SMILE };
+      const nextIndex = state.currentChallengeIndex + 1;
+      if (nextIndex < state.sequence.length) {
+        return {
+          ...state,
+          state: state.sequence[nextIndex],
+          currentChallengeIndex: nextIndex,
+        };
       }
-      if (state.state === LivenessState.CHALLENGE_SMILE) {
-        return { state: LivenessState.CHALLENGE_ROTATION };
-      }
-      if (state.state === LivenessState.CHALLENGE_ROTATION) {
-        return { state: LivenessState.CHALLENGE_PITCH };
-      }
-      if (state.state === LivenessState.CHALLENGE_PITCH) {
-        return { state: LivenessState.ANALYZING };
-      }
-      return state;
+      return {
+        ...state,
+        state: LivenessState.ANALYZING,
+        currentChallengeIndex: nextIndex,
+      };
+    case 'ADAPT_SEQUENCE':
+      return {
+        ...state,
+        sequence: action.sequence,
+      };
     case 'RESET':
-      return { state: LivenessState.POSITIONING };
+      return {
+        ...state,
+        state: LivenessState.POSITIONING,
+        sequence: [],
+        currentChallengeIndex: -1,
+      };
     case 'FAIL':
-      return { state: LivenessState.FAILURE };
+      return { ...state, state: LivenessState.FAILURE };
     case 'COMPLETE':
-      return { state: LivenessState.SUCCESS };
+      return { ...state, state: LivenessState.SUCCESS };
     default:
       return state;
   }
@@ -103,6 +115,7 @@ export const useLivenessMachine = (
 ) => {
   const dispatchAction = useDispatch();
   const [state, dispatch] = useReducer(livenessReducer, initialState);
+  const sessionIdRef = useRef<string>(Math.random().toString(36).substring(2, 15));
   const stabilityTimerRef = useRef<NodeJS.Timeout | null>(null);
   const challengeTimerRef = useRef<NodeJS.Timeout | null>(null);
   const blinkStateRef = useRef<BlinkState>({ hasClosed: false, lastTimestamp: 0 });
@@ -161,7 +174,10 @@ export const useLivenessMachine = (
         if (isValid) {
           if (!stabilityTimerRef.current) {
             stabilityTimerRef.current = setTimeout(() => {
-              dispatch({ type: 'START_CHALLENGES' });
+              // Reset sessionId for each new attempt to ensure different sequences
+              sessionIdRef.current = Math.random().toString(36).substring(2, 15);
+              const sequence = ChallengeOrchestrator.generateSequence(undefined, sessionIdRef.current);
+              dispatch({ type: 'START_CHALLENGES', sequence });
               stabilityTimerRef.current = null;
               startChallengeTimeout();
             }, 1500);
@@ -183,6 +199,20 @@ export const useLivenessMachine = (
   const handleFaceUpdate = useCallback(
     (currentFace: IFaceDetection | null, previousFace: IFaceDetection | null) => {
       if (!currentFace) return;
+
+      // Adaptive Challenge Injection: If deepfake score is suspicious, inject extra challenge
+      if (
+        currentFace.deepfakeScore !== undefined &&
+        currentFace.deepfakeScore >= 0.5 &&
+        currentFace.deepfakeScore <= 0.8 &&
+        !state.sequence.includes(LivenessState.CHALLENGE_ROTATION) &&
+        (state.state.startsWith('CHALLENGE_') || state.state === LivenessState.POSITIONING)
+      ) {
+        const newSequence = [...state.sequence];
+        // Inject at the end before ANALYZING
+        newSequence.push(LivenessState.CHALLENGE_ROTATION);
+        dispatch({ type: 'ADAPT_SEQUENCE', sequence: newSequence });
+      }
 
       // Anti-Deepfake: Abrupt movement detection
       if (previousFace) {
@@ -234,6 +264,14 @@ export const useLivenessMachine = (
       // Pitch detection
       if (state.state === LivenessState.CHALLENGE_PITCH) {
         if (detectPitch(currentFace.pitchAngle, pitchStateRef.current)) {
+          dispatch({ type: 'NEXT_CHALLENGE' });
+          startChallengeTimeout();
+        }
+      }
+
+      // Smile detection
+      if (state.state === LivenessState.CHALLENGE_SMILE) {
+        if (currentFace.smilingProbability !== undefined && detectSmile(currentFace.smilingProbability)) {
           dispatch({ type: 'NEXT_CHALLENGE' });
           startChallengeTimeout();
         }
@@ -361,21 +399,17 @@ export const useLivenessMachine = (
   }, [dispatchAction]);
 
   const progress = (() => {
-    switch (state.state) {
-      case LivenessState.CHALLENGE_BLINK:
-        return 0;
-      case LivenessState.CHALLENGE_SMILE:
-        return 0.25;
-      case LivenessState.CHALLENGE_ROTATION:
-        return 0.5;
-      case LivenessState.CHALLENGE_PITCH:
-        return 0.75;
-      case LivenessState.ANALYZING:
-      case LivenessState.SUCCESS:
-        return 1;
-      default:
-        return 0;
+    if (state.state === LivenessState.SUCCESS) {
+      return 1;
     }
+    if (state.currentChallengeIndex === -1 || state.sequence.length === 0) {
+      return 0;
+    }
+    if (state.state === LivenessState.ANALYZING) {
+      return 1;
+    }
+    // (Completed challenges) / (Total challenges + 1 for analysis)
+    return state.currentChallengeIndex / (state.sequence.length + 1);
   })();
 
   return {

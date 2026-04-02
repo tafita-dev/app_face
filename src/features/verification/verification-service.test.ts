@@ -2,10 +2,12 @@ import { verifyIdentity } from './verification-service';
 import { keychainService } from '../../services/security/keychain-service';
 import { compareEmbeddings } from './biometrics/matching-service';
 import { lockoutService } from '../security/lockout-service';
+import { adaptiveSecurityService } from '../security/adaptive-security-service';
 
 jest.mock('../../services/security/keychain-service');
 jest.mock('./biometrics/matching-service');
 jest.mock('../security/lockout-service');
+jest.mock('../security/adaptive-security-service');
 
 describe('VerificationService', () => {
   const mockLiveEmbedding = new Float32Array(128).fill(0.1);
@@ -14,6 +16,7 @@ describe('VerificationService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (lockoutService.isLockedOut as jest.Mock).mockResolvedValue(false);
+    (adaptiveSecurityService.getRequiredThreshold as jest.Mock).mockResolvedValue(0.85);
   });
 
   it('should return "Verification Success" when the embedding matches the stored template', async () => {
@@ -29,6 +32,7 @@ describe('VerificationService', () => {
 
     expect(result.status).toBe('SUCCESS');
     expect(result.message).toBe('Verification Success');
+    expect(adaptiveSecurityService.getRequiredThreshold).toHaveBeenCalled();
     expect(compareEmbeddings).toHaveBeenCalledWith(
       mockLiveEmbedding,
       mockStoredEmbedding,
@@ -49,6 +53,59 @@ describe('VerificationService', () => {
     expect(result.status).toBe('FAILURE');
     expect(result.message).toBe('Face Not Recognized');
     expect(lockoutService.recordFailure).toHaveBeenCalled();
+  });
+
+  it('should use the provided threshold if specified', async () => {
+    (keychainService.getBiometricTemplate as jest.Mock).mockResolvedValue(mockStoredEmbedding);
+    (compareEmbeddings as jest.Mock).mockReturnValue({
+      similarity: 0.9,
+      isMatch: true,
+    });
+
+    await verifyIdentity(mockLiveEmbedding, 0.95);
+
+    expect(adaptiveSecurityService.getRequiredThreshold).not.toHaveBeenCalled();
+    expect(compareEmbeddings).toHaveBeenCalledWith(
+      mockLiveEmbedding,
+      mockStoredEmbedding,
+      0.95
+    );
+  });
+
+  describe('Dynamic Security Thresholding (DST)', () => {
+    it('should return SUCCESS if score is 0.87 in Normal Mode (threshold 0.85)', async () => {
+      (adaptiveSecurityService.getRequiredThreshold as jest.Mock).mockResolvedValue(0.85);
+      (keychainService.getBiometricTemplate as jest.Mock).mockResolvedValue(mockStoredEmbedding);
+      (compareEmbeddings as jest.Mock).mockImplementation((live, stored, threshold) => {
+        const similarity = 0.87;
+        return {
+          similarity,
+          isMatch: similarity >= threshold,
+        };
+      });
+
+      const result = await verifyIdentity(mockLiveEmbedding);
+
+      expect(result.status).toBe('SUCCESS');
+      expect(result.similarity).toBe(0.87);
+    });
+
+    it('should return FAILURE if score is 0.87 in High Security Mode (threshold 0.90)', async () => {
+      (adaptiveSecurityService.getRequiredThreshold as jest.Mock).mockResolvedValue(0.90);
+      (keychainService.getBiometricTemplate as jest.Mock).mockResolvedValue(mockStoredEmbedding);
+      (compareEmbeddings as jest.Mock).mockImplementation((live, stored, threshold) => {
+        const similarity = 0.87;
+        return {
+          similarity,
+          isMatch: similarity >= threshold,
+        };
+      });
+
+      const result = await verifyIdentity(mockLiveEmbedding);
+
+      expect(result.status).toBe('FAILURE');
+      expect(result.similarity).toBe(0.87);
+    });
   });
 
   it('should return "LOCKOUT" when account is locked', async () => {

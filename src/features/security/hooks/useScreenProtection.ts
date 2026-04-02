@@ -1,31 +1,50 @@
 import { useState, useEffect } from 'react';
-// @ts-ignore
-import ScreenGuard from 'react-native-screen-guard';
+import ScreenGuard from 'react-native-screenguard';
 
-/**
- * Hook to manage screen protection (recording and screenshots).
- * Uses react-native-screen-guard to detect and prevent unauthorized captures.
- */
 export const useScreenProtection = () => {
   const [isRecording, setIsRecording] = useState(false);
 
   useEffect(() => {
-    // Register for recording events
-    // ScreenGuard.registerRecordingListener(callback)
-    ScreenGuard.registerRecordingListener((data: any) => {
-      if (data && typeof data.isRecording !== 'undefined') {
-        setIsRecording(data.isRecording);
+    const setupScreenGuard = async () => {
+      try {
+        // ScreenGuard.initSettings() is now called in index.js for global initialization
+
+        // 2. Activation du blocage (Register)
+        // Note: register returns a Promise in recent versions
+        await ScreenGuard.register({
+          color: '#000000',
+          status: 'on',
+          time: 1000,
+        } as any);
+
+        // 3. Gestion des Listeners
+        const guard = ScreenGuard as any;
+
+        if (guard.listenScreenshot) {
+          guard.listenScreenshot(() => {
+            console.warn("Capture d'écran détectée !");
+          });
+        }
+
+        if (guard.listenVideoRecording) {
+          guard.listenVideoRecording((res: any) => {
+            setIsRecording(!!res);
+          });
+        }
+      } catch (error) {
+        console.error('Failed to setup ScreenGuard:', error);
       }
-    });
+    };
 
-    // Register for screenshot events (Scenario 3 - iOS)
-    ScreenGuard.registerScreenshotListener(() => {
-      console.warn('Screenshot detected on sensitive screen!');
-    });
+    setupScreenGuard();
 
-    // Cleanup on unmount
+    // 4. Nettoyage
     return () => {
-      ScreenGuard.unregister();
+      try {
+        ScreenGuard.unregister();
+      } catch (error) {
+        console.warn('Failed to unregister ScreenGuard:', error);
+      }
     };
   }, []);
 

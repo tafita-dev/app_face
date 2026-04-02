@@ -4,7 +4,7 @@ import { Camera, useCameraDevice } from 'react-native-vision-camera';
 import { useIsFocused } from '@react-navigation/native';
 import { useFaceDetection } from './hooks/useFaceDetection';
 import { FaceGuide } from '../../components/camera/FaceGuide';
-import { LivenessState } from '../verification/liveness/useLivenessMachine';
+import { LivenessState } from '../verification/liveness/types';
 import { TensorflowModel } from 'react-native-fast-tflite';
 
 interface CameraViewProps {

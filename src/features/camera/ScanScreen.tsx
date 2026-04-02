@@ -14,8 +14,8 @@ import { CameraView } from './CameraView';
 import { COLORS } from '../../theme';
 import {
   useLivenessMachine,
-  LivenessState,
 } from '../verification/liveness/useLivenessMachine';
+import { LivenessState } from '../verification/liveness/types';
 import { RootState } from '../../store';
 import { useAntiDeepfakeModel } from '../verification/deepfake/hooks/useAntiDeepfakeModel';
 import { useBiometricModel } from '../verification/biometrics/hooks/useBiometricModel';

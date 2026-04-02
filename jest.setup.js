@@ -198,6 +198,16 @@ jest.mock('react-native-screen-guard', () => ({
   unregister: jest.fn(),
 }), { virtual: true });
 
+jest.mock('react-native-screenguard', () => ({
+  initSettings: jest.fn(),
+  register: jest.fn(),
+  unregister: jest.fn(),
+  listenScreenshot: jest.fn(),
+  listenVideoRecording: jest.fn(),
+}), { virtual: true });
+
 jest.mock('react-native-device-info', () => ({
   getUniqueIdSync: jest.fn(() => 'test-device-id'),
+  getBatteryLevel: jest.fn().mockResolvedValue(0.5),
+  isBatteryCharging: jest.fn().mockResolvedValue(true),
 }), { virtual: true });

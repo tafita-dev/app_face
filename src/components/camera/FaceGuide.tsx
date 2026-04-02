@@ -6,7 +6,7 @@ import { SharedValue, useDerivedValue, runOnJS, useSharedValue, withRepeat, with
 import { IFaceDetection } from '../../features/camera/frame-processors/types';
 import { COLORS } from '../../theme';
 import { useUserGuidance } from '../../features/camera/hooks/useUserGuidance';
-import { LivenessState } from '../../features/verification/liveness/useLivenessMachine';
+import { LivenessState } from '../../features/verification/liveness/types';
 
 interface FaceGuideProps {
   face: SharedValue<IFaceDetection | null>;

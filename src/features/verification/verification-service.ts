@@ -1,6 +1,7 @@
 import { keychainService } from '../../services/security/keychain-service';
 import { compareEmbeddings } from './biometrics/matching-service';
 import { lockoutService } from '../security/lockout-service';
+import { adaptiveSecurityService } from '../security/adaptive-security-service';
 
 export type VerificationStatus = 'SUCCESS' | 'FAILURE' | 'ERROR' | 'LOCKOUT';
 
@@ -11,17 +12,15 @@ export interface IVerificationResult {
   lockoutRemainingTime?: number;
 }
 
-const DEFAULT_VERIFICATION_THRESHOLD = 0.85;
-
 /**
  * Verifies a live biometric embedding against the stored template in the keychain.
  * @param liveEmbedding The current face embedding from the camera.
- * @param threshold The similarity threshold for a match (default 0.85).
+ * @param threshold Optional similarity threshold. If not provided, it will be calculated dynamically.
  * @returns A result object with status and descriptive message.
  */
 export async function verifyIdentity(
   liveEmbedding: Float32Array,
-  threshold: number = DEFAULT_VERIFICATION_THRESHOLD
+  threshold?: number
 ): Promise<IVerificationResult> {
   try {
     if (await lockoutService.isLockedOut()) {
@@ -33,6 +32,10 @@ export async function verifyIdentity(
       };
     }
 
+    const finalThreshold = threshold !== undefined 
+      ? threshold 
+      : await adaptiveSecurityService.getRequiredThreshold(false);
+
     const storedEmbedding = await keychainService.getBiometricTemplate();
 
     if (!storedEmbedding) {
@@ -42,7 +45,7 @@ export async function verifyIdentity(
     const matchResult = compareEmbeddings(
       liveEmbedding,
       storedEmbedding,
-      threshold
+      finalThreshold
     );
 
     if (matchResult.isMatch) {
