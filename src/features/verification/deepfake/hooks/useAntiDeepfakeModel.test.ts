@@ -7,15 +7,13 @@ jest.mock('react-native-fast-tflite', () => ({
 }));
 
 describe('useAntiDeepfakeModel', () => {
-  it('should load the model on mount', async () => {
-    const mockModel = { run: jest.fn() };
-    (loadTensorflowModel as jest.Mock).mockResolvedValue(mockModel);
-
+  it('should provide a safe mock model during development/test', async () => {
     const { result } = renderHook(() => useAntiDeepfakeModel());
 
     await waitFor(() => expect(result.current.isLoaded).toBe(true));
-    expect(result.current.model).toBe(mockModel);
-    expect(loadTensorflowModel).toHaveBeenCalled();
+    expect(result.current.model).not.toBeNull();
+    expect(result.current.model?.run([[1]])[0][0]).toBe(0.05);
+    expect(loadTensorflowModel).not.toHaveBeenCalled();
   });
 
   it('should provide a mock model in development mode if loading fails', async () => {

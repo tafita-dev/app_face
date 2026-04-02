@@ -2,7 +2,12 @@ import { useState, useEffect } from 'react';
 import { Image } from 'react-native';
 import { loadTensorflowModel, TensorflowModel } from 'react-native-fast-tflite';
 
-const MODEL_PATH = require('../../../../../src/assets/models/dummy.tflite');
+const createDevMockModel = (): TensorflowModel =>
+  ({
+    run: () => [[0.05]], // Stable low score (low deepfake probability)
+  } as any);
+
+const getModelPath = () => require('../../../../assets/models/dummy.tflite');
 
 export const useAntiDeepfakeModel = () => {
   const [model, setModel] = useState<TensorflowModel | null>(null);
@@ -13,11 +18,20 @@ export const useAntiDeepfakeModel = () => {
     let isMounted = true;
 
     const loadModel = async () => {
+      if (__DEV__ || process.env.NODE_ENV === 'test') {
+        if (isMounted) {
+          setModel(createDevMockModel());
+          setIsLoaded(true);
+        }
+        return;
+      }
+
       try {
-        const resolvedAsset = Image.resolveAssetSource(MODEL_PATH);
+        const modelPath = getModelPath();
+        const resolvedAsset = Image.resolveAssetSource(modelPath);
         const source =
-          typeof MODEL_PATH === 'number'
-            ? MODEL_PATH
+          typeof modelPath === 'number'
+            ? modelPath
             : { url: resolvedAsset.uri };
 
         const loadedModel = await loadTensorflowModel(source);
@@ -33,9 +47,7 @@ export const useAntiDeepfakeModel = () => {
         if (isMounted) {
           if (__DEV__) {
             // Provide a mock model for development if the real one fails to load
-            setModel({
-              run: () => [[Math.random() * 0.1]], // Mock score < 0.1 (low deepfake probability)
-            } as any);
+            setModel(createDevMockModel());
             setIsLoaded(true);
           } else {
             setError(

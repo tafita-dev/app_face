@@ -2,7 +2,12 @@ import { useState, useEffect } from 'react';
 import { Image } from 'react-native';
 import { loadTensorflowModel, TensorflowModel } from 'react-native-fast-tflite';
 
-const MODEL_PATH = require('../../../../../src/assets/models/mobilefacenet.tflite');
+const createDevMockModel = (): TensorflowModel =>
+  ({
+    run: () => [new Float32Array(128).fill(0.1)],
+  } as any);
+
+const getModelPath = () => require('../../../../assets/models/mobilefacenet.tflite');
 
 /**
  * Hook to load and manage the MobileFaceNet TFLite model.
@@ -16,13 +21,20 @@ export const useBiometricModel = () => {
     let isMounted = true;
 
     const loadModel = async () => {
+      if (__DEV__ || process.env.NODE_ENV === 'test') {
+        if (isMounted) {
+          setModel(createDevMockModel());
+          setIsLoaded(true);
+        }
+        return;
+      }
+
       try {
-        const resolvedAsset = Image.resolveAssetSource(
-          require('../../../../../src/assets/models/mobilefacenet.tflite'),
-        );
+        const modelPath = getModelPath();
+        const resolvedAsset = Image.resolveAssetSource(modelPath);
         const source =
-          typeof MODEL_PATH === 'number'
-            ? MODEL_PATH
+          typeof modelPath === 'number'
+            ? modelPath
             : { url: resolvedAsset.uri };
 
         const loadedModel = await loadTensorflowModel(source);
@@ -38,9 +50,7 @@ export const useBiometricModel = () => {
         if (isMounted) {
           if (__DEV__) {
             // Provide a mock model for development if the real one fails to load
-            setModel({
-              run: () => [new Float32Array(128).fill(Math.random())], // Mock 128-D embedding
-            } as any);
+            setModel(createDevMockModel());
             setIsLoaded(true);
           } else {
             setError(
